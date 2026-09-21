@@ -1,0 +1,1668 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>布局布线（P&amp;R）文献综述：分开做还是一体化？</title>
+<meta name="description" content="布局布线（P&amp;R）文献综述：分开做还是一体化？">
+<script>(function(){try{var t=localStorage.getItem("prdoc-theme");if(!t){t=(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light";}document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
+<link rel="stylesheet" href="assets/katex.min.css">
+<style>
+/* ================= 设计变量 ================= */
+:root{
+  --topbar-h:56px;
+  --sidebar-w:312px;
+  --content-max:940px;
+
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei","PingFang SC","Hiragino Sans GB","Noto Sans CJK SC","Source Han Sans SC",sans-serif;
+  --font-mono:"JetBrains Mono","Cascadia Mono","Cascadia Code",Consolas,"Sarasa Mono SC","Noto Sans Mono CJK SC","DejaVu Sans Mono",monospace;
+
+  --c-bg:#ffffff;
+  --c-bg-soft:#f6f8fa;
+  --c-bg-side:#fbfcfd;
+  --c-bg-code:#f6f8fa;
+  --c-border:#e5e9ef;
+  --c-border-soft:#eef1f6;
+  --c-text:#1f2328;
+  --c-text-soft:#5a626c;
+  --c-text-faint:#8b939d;
+  --c-accent:#2563eb;
+  --c-accent-soft:#e9f0fe;
+  --c-accent-line:#bcd3f7;
+  --c-quote-bg:#f7f9fc;
+  --c-hero-grad:linear-gradient(135deg,#f2f6ff 0%,#fbfcff 55%,#f7f9fc 100%);
+
+  --shadow-sm:0 1px 2px rgba(16,24,40,.05);
+  --shadow-md:0 6px 24px rgba(16,24,40,.10);
+  --radius:10px;
+}
+html[data-theme="dark"]{
+  --c-bg:#0f1216;
+  --c-bg-soft:#151a20;
+  --c-bg-side:#12161b;
+  --c-bg-code:#151a20;
+  --c-border:#262c34;
+  --c-border-soft:#1e242b;
+  --c-text:#e3e7ec;
+  --c-text-soft:#a3acb8;
+  --c-text-faint:#78828f;
+  --c-accent:#7aa8ff;
+  --c-accent-soft:#16243a;
+  --c-accent-line:#2c4470;
+  --c-quote-bg:#141a21;
+  --c-hero-grad:linear-gradient(135deg,#141b26 0%,#0f1216 60%,#12161b 100%);
+  --shadow-md:0 6px 24px rgba(0,0,0,.45);
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--c-bg);color:var(--c-text);
+  font-family:var(--font-sans);font-size:15.5px;line-height:1.78;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+}
+::selection{background:var(--c-accent-soft)}
+
+/* 滚动条 */
+*::-webkit-scrollbar{width:9px;height:9px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:var(--c-border);border-radius:6px}
+*::-webkit-scrollbar-thumb:hover{background:var(--c-text-faint)}
+
+/* ================= 顶栏 ================= */
+.progress{position:fixed;top:0;left:0;height:2px;width:0;background:var(--c-accent);z-index:60;transition:width .1s linear}
+.topbar{
+  position:sticky;top:0;z-index:40;height:var(--topbar-h);
+  display:flex;align-items:center;gap:12px;padding:0 16px;
+  background:var(--c-bg);border-bottom:1px solid var(--c-border);
+}
+.topbar .brand{
+  flex:1;min-width:0;display:flex;align-items:center;gap:9px;
+  font-weight:650;font-size:14.5px;color:var(--c-text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.topbar .brand .logo{
+  width:24px;height:24px;flex:none;border-radius:7px;
+  background:linear-gradient(135deg,var(--c-accent),#7c3aed);
+  color:#fff;font-size:12px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+}
+.icon-btn{
+  width:34px;height:34px;flex:none;display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--c-border);background:var(--c-bg);
+  color:var(--c-text-soft);border-radius:8px;cursor:pointer;font-size:15px;
+  transition:.15s;
+}
+.icon-btn:hover{background:var(--c-bg-soft);color:var(--c-text);border-color:var(--c-text-faint)}
+#menuBtn{display:none}
+
+/* ================= 布局 ================= */
+.shell{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);align-items:start}
+.mask{display:none;position:fixed;inset:0;background:rgba(15,18,22,.45);z-index:34;backdrop-filter:blur(1px)}
+.mask.show{display:block}
+
+/* ================= 侧边目录 ================= */
+.sidebar{
+  position:sticky;top:var(--topbar-h);
+  height:calc(100vh - var(--topbar-h));
+  overflow-y:auto;overscroll-behavior:contain;
+  background:var(--c-bg-side);border-right:1px solid var(--c-border);
+  padding:14px 10px 64px;
+}
+.nav-tools{display:flex;gap:6px;margin:0 6px 10px}
+.search{flex:1;position:relative}
+.search input{
+  width:100%;padding:7px 10px 7px 28px;font-size:13px;font-family:inherit;
+  color:var(--c-text);background:var(--c-bg);
+  border:1px solid var(--c-border);border-radius:8px;outline:none;transition:.15s;
+}
+.search input:focus{border-color:var(--c-accent);box-shadow:0 0 0 3px var(--c-accent-soft)}
+.search input::placeholder{color:var(--c-text-faint)}
+.search::before{
+  content:"⌕";position:absolute;left:9px;top:50%;transform:translateY(-52%);
+  color:var(--c-text-faint);font-size:15px;pointer-events:none;
+}
+.mini-btn{
+  flex:none;padding:0 9px;font-size:12px;font-family:inherit;
+  border:1px solid var(--c-border);background:var(--c-bg);color:var(--c-text-soft);
+  border-radius:8px;cursor:pointer;transition:.15s;white-space:nowrap;
+}
+.mini-btn:hover{background:var(--c-bg-soft);color:var(--c-text);border-color:var(--c-text-faint)}
+
+.nav-group{margin:1px 0}
+.nav-row{display:flex;align-items:center}
+.nav-group .nav-children{overflow:hidden}
+.nav-group.collapsed .nav-children{display:none}
+.nav-group.collapsed .chev{transform:rotate(-90deg)}
+
+.chev{
+  width:20px;height:20px;flex:none;margin-left:2px;padding:0;
+  display:flex;align-items:center;justify-content:center;
+  border:none;background:none;color:var(--c-text-faint);cursor:pointer;
+  font-size:10px;border-radius:5px;transition:transform .15s,background .15s;
+}
+.chev:hover{background:var(--c-bg-soft);color:var(--c-text)}
+
+.nav-link{
+  display:block;flex:1;min-width:0;padding:5px 9px;border-radius:7px;
+  color:var(--c-text-soft);text-decoration:none;font-size:13.5px;line-height:1.5;
+  border-left:2px solid transparent;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.nav-link:hover{background:var(--c-bg-soft);color:var(--c-text)}
+.nav-link.lv1{font-size:13px;font-weight:650;color:var(--c-text);margin:4px 0 6px;background:var(--c-bg-soft)}
+.nav-link.lv2{font-weight:650;color:var(--c-text);font-size:14px;padding:6px 9px}
+.nav-link.lv3{padding-left:22px;font-size:13px}
+.nav-link.lv4{padding-left:36px;font-size:12.5px;color:var(--c-text-faint);padding-top:4px;padding-bottom:4px}
+.nav-link.active{background:var(--c-accent-soft);color:var(--c-accent);font-weight:650;border-left-color:var(--c-accent)}
+.nav-link.hidden{display:none}
+.nav-group.hidden{display:none}
+.nav-empty{display:none;padding:10px 12px;font-size:12.5px;color:var(--c-text-faint)}
+
+/* ================= 正文 ================= */
+.doc{max-width:var(--content-max);margin:0 auto;padding:0 46px 160px;min-width:0}
+.doc-hero{
+  margin:0 -46px 30px;padding:46px 46px 34px;
+  background:var(--c-hero-grad);border-bottom:1px solid var(--c-border);
+}
+.doc-hero h1{
+  margin:0;font-size:2.05rem;line-height:1.35;font-weight:750;letter-spacing:-.01em;
+}
+.doc-hero blockquote{
+  margin:16px 0 0;padding:0;background:none;border:none;
+  color:var(--c-text-soft);font-size:14px;line-height:1.85;
+}
+.doc-hero blockquote p{margin:.2em 0}
+.doc-hero blockquote strong{color:var(--c-text)}
+.doc-hero .h-anchor{display:none}
+
+.doc h1,.doc h2,.doc h3,.doc h4{
+  scroll-margin-top:calc(var(--topbar-h) + 16px);
+  position:relative;line-height:1.4;
+}
+.doc h2{
+  margin:3.1em 0 1em;padding-bottom:.42em;font-size:1.56rem;font-weight:700;
+  border-bottom:1px solid var(--c-border);letter-spacing:-.005em;
+}
+.doc h3{
+  margin:2.15em 0 .75em;padding-left:12px;font-size:1.2rem;font-weight:650;
+  border-left:4px solid var(--c-accent-line);
+}
+.doc h4{margin:1.75em 0 .6em;font-size:1.03rem;font-weight:650}
+
+.h-anchor{
+  margin-left:.5em;color:var(--c-text-faint);text-decoration:none;font-weight:400;
+  font-size:.85em;opacity:0;transition:opacity .15s,color .15s;
+}
+.doc h2:hover .h-anchor,.doc h3:hover .h-anchor,.doc h4:hover .h-anchor{opacity:.55}
+.h-anchor:hover{color:var(--c-accent);opacity:1}
+
+.doc p{margin:.95em 0}
+.doc a{color:var(--c-accent);text-decoration:none;border-bottom:1px solid var(--c-accent-line)}
+.doc a:hover{border-bottom-color:currentColor}
+.doc strong{font-weight:680;color:var(--c-text)}
+.doc em{font-style:italic}
+
+.doc ul,.doc ol{margin:.9em 0;padding-left:1.6em}
+.doc li{margin:.34em 0}
+.doc li>ul,.doc li>ol{margin:.3em 0}
+.doc ul{list-style:disc}
+.doc ul ul{list-style:circle}
+
+.doc hr{
+  height:1px;margin:2.8em 0;border:none;
+  background:linear-gradient(90deg,var(--c-border),var(--c-border-soft) 65%,transparent);
+}
+
+.doc blockquote{
+  margin:1.25em 0;padding:13px 18px;
+  background:var(--c-quote-bg);border-left:3px solid var(--c-accent-line);
+  border-radius:0 9px 9px 0;color:var(--c-text-soft);font-size:14.6px;
+}
+.doc blockquote p{margin:.45em 0}
+.doc blockquote p:first-child{margin-top:0}
+.doc blockquote p:last-child{margin-bottom:0}
+.doc blockquote strong{color:var(--c-text)}
+.doc blockquote code{background:var(--c-bg)}
+
+/* 表格 */
+.table-wrap{
+  display:block;width:100%;margin:1.35em 0;
+  overflow-x:auto;overflow-y:hidden;
+  border:1px solid var(--c-border);border-radius:var(--radius);background:var(--c-bg);
+}
+.doc table{width:100%;border-collapse:collapse;font-size:13.8px}
+.doc thead th{
+  background:var(--c-bg-soft);font-weight:680;text-align:left;
+  padding:10px 13px;border-bottom:1px solid var(--c-border);white-space:nowrap;
+}
+.doc td{padding:9px 13px;border-bottom:1px solid var(--c-border-soft);vertical-align:top;line-height:1.65}
+.doc tbody tr:last-child td{border-bottom:none}
+.doc tbody tr:hover{background:var(--c-bg-soft)}
+
+/* 代码 */
+.doc pre{
+  position:relative;margin:1.25em 0;padding:15px 17px;
+  background:var(--c-bg-code);border:1px solid var(--c-border);
+  border-radius:var(--radius);overflow-x:auto;
+}
+.doc pre code{
+  display:block;font-family:var(--font-mono);font-size:12.7px;line-height:1.62;
+  white-space:pre;color:var(--c-text);background:none;border:none;padding:0;
+}
+.doc :not(pre)>code{
+  font-family:var(--font-mono);font-size:.87em;
+  background:var(--c-bg-code);border:1px solid var(--c-border-soft);
+  padding:1.5px 5px;border-radius:6px;
+}
+.copy-btn{
+  position:absolute;top:8px;right:8px;padding:3px 9px;
+  font-size:11px;font-family:inherit;
+  background:var(--c-bg);color:var(--c-text-soft);
+  border:1px solid var(--c-border);border-radius:6px;cursor:pointer;
+  opacity:0;transition:opacity .15s,color .15s;
+}
+.doc pre:hover .copy-btn,.copy-btn.done{opacity:1}
+.copy-btn:hover{color:var(--c-text);border-color:var(--c-text-faint)}
+
+/* 公式 */
+eq{display:inline}
+eqn{display:block;margin:1.05em 0}
+.doc .katex{font-size:1.06em}
+.katex-display{
+  margin:0;padding:3px 2px;overflow-x:auto;overflow-y:hidden;
+}
+.katex-display>.katex{white-space:nowrap}
+.katex-display::-webkit-scrollbar{height:6px}
+
+/* 回顶 */
+.backtop{
+  position:fixed;right:22px;bottom:26px;width:40px;height:40px;
+  display:none;align-items:center;justify-content:center;font-size:16px;
+  background:var(--c-bg);color:var(--c-text-soft);
+  border:1px solid var(--c-border);border-radius:50%;
+  box-shadow:var(--shadow-md);cursor:pointer;z-index:30;transition:.15s;
+}
+.backtop.show{display:flex}
+.backtop:hover{color:var(--c-accent);border-color:var(--c-accent)}
+
+/* ================= 响应式 ================= */
+@media (max-width:1080px){
+  :root{--sidebar-w:292px}
+  #menuBtn{display:flex}
+  .shell{grid-template-columns:minmax(0,1fr)}
+  .sidebar{
+    position:fixed;left:0;top:calc(var(--topbar-h) + 36px);z-index:35;
+    width:var(--sidebar-w);height:calc(100vh - var(--topbar-h) - 36px);
+    transform:translateX(-102%);transition:transform .22s ease;
+    box-shadow:var(--shadow-md);
+  }
+  .sidebar.open{transform:none}
+  .sitenav{padding:0 14px;font-size:12.3px}
+  .doc{padding:0 22px 120px}
+  .doc-hero{margin:0 -22px 26px;padding:34px 22px 26px}
+  .doc-hero h1{font-size:1.6rem}
+  .doc h2{font-size:1.35rem}
+  .doc h3{font-size:1.12rem}
+}
+@media print{
+  .topbar,.sidebar,.backtop,.progress,.copy-btn,.mask,.sitenav{display:none!important}
+  .shell{display:block}
+  .doc{max-width:none;padding:0}
+  .doc-hero{margin:0 0 20px;padding:0 0 16px;background:none}
+  .doc h2{page-break-before:always;break-before:page}
+  .doc h2:first-of-type{page-break-before:auto;break-before:auto}
+  .doc a{color:#000;text-decoration:underline;border:none}
+  .doc pre{white-space:pre-wrap;word-break:break-word;border:1px solid #ccc}
+  .table-wrap{overflow:visible}
+  .doc table{font-size:11px}
+}
+
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<header class="topbar">
+<button class="icon-btn" id="menuBtn" type="button" aria-label="打开目录">☰</button>
+<div class="brand"><span class="logo">P&amp;R</span><span>布局布线（P&amp;R）文献综述：分开做还是一体化？</span></div>
+<button class="icon-btn" id="themeBtn" type="button" aria-label="切换主题">☾</button>
+</header>
+<nav class="sitenav"><a href="index.html">首页</a><i>·</i><a href="classic-methods.html">经典方法</a><i>·</i><span class="sitenav-cur">文献综述</span><i>·</i><a href="chip-design-flow.html">全流程笔记</a></nav>
+<div class="shell">
+<aside class="sidebar" id="sidebar">
+<div class="nav-tools">
+<div class="search"><input id="navSearch" type="search" placeholder="搜索目录…" autocomplete="off"></div>
+<button class="mini-btn" id="expandAll" type="button">展开</button>
+<button class="mini-btn" id="collapseAll" type="button">折叠</button>
+</div>
+<nav class="nav">
+<a class="nav-link lv1" href="#top">📄 布局布线（P&amp;R）文献综述：分开做还是一体化？</a>
+<div class="nav-group plain"><a class="nav-link lv2" href="#sec-0">0. 结论速览（TL;DR）</a></div>
+<div class="nav-group"><div class="nav-row"><a class="nav-link lv2" href="#sec-2">2. 主题分类：三条技术路线</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children">
+<a class="nav-link lv3" href="#separation">路线一：传统分离流程（Separation）</a>
+<a class="nav-link lv3" href="#cross-stage-shift-left">路线二：跨阶段协同（Cross-stage / Shift-Left）</a>
+<a class="nav-link lv3" href="#unified-co-optimization-end-to-end">路线三：一体化 / 统一优化（Unified / Co-optimization / End-to-end）</a>
+</div></div>
+<div class="nav-group collapsed"><div class="nav-row"><a class="nav-link lv2" href="#sec-3">3. 关键判断：到底「一起做」还是「分开做」？</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children">
+<a class="nav-link lv3" href="#sec">判断一： 流程结构上，仍然是分开的</a>
+<a class="nav-link lv3" href="#sec-4">判断二： 信息与目标函数层面，正在强融合</a>
+<a class="nav-link lv3" href="#sec-5">判断三： 学术前沿明显「一体化」，工业主流是「分离 + 强反馈」</a>
+<a class="nav-link lv3" href="#sec-6">判断四： 先进工艺与新场景，正在把二者「推向」一体化</a>
+</div></div>
+<div class="nav-group plain"><a class="nav-link lv2" href="#sec-4-2">4. 为什么「不能完全合并」？（一体化的现实阻力）</a></div>
+<div class="nav-group collapsed"><div class="nav-row"><a class="nav-link lv2" href="#sec-5-2">5. 总结与展望</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children">
+<a class="nav-link lv3" href="#2026">当前态势（2026）</a>
+<a class="nav-link lv3" href="#a2-a3-a7-b1">未来趋势（基于 A2、A3、A7、B1 等）</a>
+<a class="nav-link lv3" href="#sec-7">对深入学习者的建议</a>
+</div></div>
+<div class="nav-group collapsed"><div class="nav-row"><a class="nav-link lv2" href="#sec-6-2">6. 英文名词速查（缩写与术语解释）</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children">
+<a class="nav-link lv3" href="#sec-6-1">6.1 流程与阶段（P&amp;R 主干）</a>
+<a class="nav-link lv3" href="#sec-6-2-2">6.2 指标与度量（评价布局布线好坏）</a>
+<a class="nav-link lv3" href="#sec-6-3">6.3 算法与方法（本文的"武器库"）</a>
+<a class="nav-link lv3" href="#sec-6-4">6.4 范式与理念（本文的趋势判断用词）</a>
+<a class="nav-link lv3" href="#sec-6-5">6.5 电路与工艺基础</a>
+<a class="nav-link lv3" href="#sec-6-6">6.6 论文代号（B 类前沿工作）</a>
+<a class="nav-link lv3" href="#sec-6-7">6.7 会议、期刊与机构</a>
+<a class="nav-link lv3" href="#sec-6-8">6.8 工具与流程名</a>
+<a class="nav-link lv3" href="#sec-6-9">6.9 文档里的其它英文小词</a>
+</div></div>
+<div class="nav-group plain"><a class="nav-link lv2" href="#sec-8">附：主要参考链接</a></div>
+<div class="nav-group collapsed"><div class="nav-row"><a class="nav-link lv2" href="#sec-1">1. 文献清单（22 篇，2024–2026）</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children">
+<a class="nav-link lv3" href="#a-12">A 类：综述 / 综述性论文（12 篇）</a>
+<a class="nav-link lv3" href="#b-10">B 类：代表性前沿工作（10 篇，用于佐证「一体化」趋势）</a>
+</div></div>
+
+<div class="nav-empty" id="navEmpty">没有匹配的条目</div>
+</nav>
+</aside>
+<div class="mask" id="mask"></div>
+<main class="doc" id="doc">
+<header class="doc-hero"><h1 id="top">布局布线（P&amp;R）文献综述：分开做还是一体化？<a class="h-anchor" href="#top" aria-label="本节链接">#</a></h1>
+<blockquote>
+<p>调研范围：2024–2026 年 placement / routing 相关综述与代表性前沿工作
+核心问题：当前研究与工业实践中，布局与布线是「分开做」还是「一体化协同做」？</p>
+</blockquote></header>
+<h2 id="sec-0">0. 结论速览（TL;DR）<a class="h-anchor" href="#sec-0" aria-label="本节链接">#</a></h2>
+<p><strong>一句话结论：流程形式上仍是「先布局、后布线」两阶段；但在两个层面正在快速「一体化」——</strong></p>
+<ol>
+<li><strong>学术界</strong>：从「松散耦合」走向「紧密协同 / 统一优化」。出现了大量 routability-driven placement、timing-driven placement、可微分多目标布局、placement–routing co-optimization、甚至统一的 ADMM 联合求解（RUPlace），以及 RL/生成式端到端尝试。</li>
+<li><strong>工业界</strong>：主流仍是<strong>分阶段串行流程</strong>，但通过 <strong>Shift-Left（左移）</strong> 把布线信息前移到布局阶段做预测与约束——即「 <strong>流程分离 + 信息融合</strong>」，而非把两个阶段真正合并。</li>
+</ol>
+<p><strong>可以这样概括当前态势：</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">维度</th>
+<th style="text-align:left">现状</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">流程结构</td>
+<td style="text-align:left"><strong>仍是分离的</strong>（placement → CTS → routing，顺序执行）</td>
+</tr>
+<tr>
+<td style="text-align:left">阶段间信息流</td>
+<td style="text-align:left"><strong>正在融合</strong>（布线拥塞/时序预测前移到布局，或布局反馈迭代）</td>
+</tr>
+<tr>
+<td style="text-align:left">学术前沿</td>
+<td style="text-align:left"><strong>明显一体化</strong>（统一优化、可微分、co-optimization、end-to-end）</td>
+</tr>
+<tr>
+<td style="text-align:left">工业主流</td>
+<td style="text-align:left"><strong>分离流程 + 强反馈迭代</strong>（物理综合、concurrent optimization、Shift-Left）</td>
+</tr>
+<tr>
+<td style="text-align:left">短期走向</td>
+<td style="text-align:left">不是「谁取代谁」，而是<strong>边界模糊化</strong>：融合发生在「信息与目标函数」层面，而非「工具阶段」层面</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="sec-2">2. 主题分类：三条技术路线<a class="h-anchor" href="#sec-2" aria-label="本节链接">#</a></h2>
+<h3 id="separation">路线一：传统分离流程（Separation）<a class="h-anchor" href="#separation" aria-label="本节链接">#</a></h3>
+<ul>
+<li>
+<p><strong>代表</strong>：A1（Physical Design 方法论）、A9（开源 EDA 全栈）、A10（ISPD 布线竞赛）</p>
+</li>
+<li>
+<p><strong>特征</strong>：</p>
+<ul>
+<li>placement → CTS → routing <strong>严格顺序</strong></li>
+<li>布局目标主要是 <strong>HPWL / 面积 / 密度</strong>，布线<strong>后置</strong></li>
+<li>布线在布局<strong>完全冻结</strong>后独立优化</li>
+</ul>
+</li>
+<li>
+<p><strong>定位</strong>：这是工业主流流程的<strong>骨架</strong>，也是绝大多数工具链的实际执行方式</p>
+</li>
+<li>
+<p><strong>问题</strong>：HPWL 只是线长近似， <strong>无法反映真实路径与拥塞</strong>；布局若只顾 HPWL，布线阶段常出现严重拥塞与频繁回退（B4 明确指出）</p>
+</li>
+</ul>
+<h3 id="cross-stage-shift-left">路线二：跨阶段协同（Cross-stage / Shift-Left）<a class="h-anchor" href="#cross-stage-shift-left" aria-label="本节链接">#</a></h3>
+<ul>
+<li>
+<p><strong>代表</strong>：A3（Shift-Left Survey）、A5（Learning-based PnR）、A4（工业 ML macro placement）、B5、B9</p>
+</li>
+<li>
+<p><strong>两种子策略（来自 A3，非常关键）</strong> ：</p>
+<ol>
+<li><strong>Virtual Prototypes（虚拟样机）</strong> ：用 ML/DL 模型<strong>预测</strong>下游（布线）行为——拥塞预测、时序预测——让早期阶段「看见」未来</li>
+<li><strong>Fused Actions（动作融合）</strong> ：把后阶段动作<strong>前移并与前阶段融合</strong>——如 physically-aware synthesis、把全局布线信息引入全局布局</li>
+</ol>
+</li>
+<li>
+<p><strong>本质</strong>： <strong>流程阶段没有合并，但阶段间信息被打破隔离</strong>。A3 称之为「从 divide-and-conquer 走向 fusion」</p>
+</li>
+<li>
+<p><strong>落地证据</strong>：A4 显示 ML macro placement 在真实 GPU 设计上 <strong>60% 的 block 达到或优于人工基线</strong>，但<strong>只有 30% 可产品化</strong>——说明预测式协同有效但尚不稳定</p>
+</li>
+</ul>
+<h3 id="unified-co-optimization-end-to-end">路线三：一体化 / 统一优化（Unified / Co-optimization / End-to-end）<a class="h-anchor" href="#unified-co-optimization-end-to-end" aria-label="本节链接">#</a></h3>
+<ul>
+<li>
+<p><strong>代表</strong>：B1（C3PO）、B2（RUPlace）、B3、B4、B6、B7、B8</p>
+</li>
+<li>
+<p><strong>关键技术手段</strong>：</p>
+<ul>
+<li><strong>可微分化</strong>：把 routing 的拥塞度量（如 RUDY）、时序（TNS/WNS）做成<strong>对 cell 坐标可微</strong>的目标，直接在布局梯度里优化（B1、B3、B6）</li>
+<li><strong>统一建模求解</strong>：ADMM 类框架把 placement 与 routing 写进<strong>同一个优化问题</strong>（B2）</li>
+<li><strong>联合迭代反馈</strong>：routing 结果反哺 placement，反复 refine（B4、B7）</li>
+<li><strong>端到端学习</strong>：GNN/RL 直接学习「可布线性感知」的布局（B5、B10、A2）</li>
+</ul>
+</li>
+<li>
+<p><strong>代表成果</strong>：</p>
+<ul>
+<li>B1（C3PO）：与商业工具<strong>全流程对比</strong>，routed wirelength 最多改善 16.7%、switching power 19.6%，且<strong>放入真实商业 flow 验证</strong>——这是「一体化」走向工业可用性的强信号</li>
+<li>B2（RUPlace）：不再把 routability 当作布局的<strong>间接指标</strong>，而是统一优化，减少 DRV</li>
+</ul>
+</li>
+</ul>
+<h2 id="sec-3">3. 关键判断：到底「一起做」还是「分开做」？<a class="h-anchor" href="#sec-3" aria-label="本节链接">#</a></h2>
+<h3 id="sec">判断一： <strong>流程结构上，仍然是分开的</strong><a class="h-anchor" href="#sec" aria-label="本节链接">#</a></h3>
+<ul>
+<li>所有综述（A1、A9、A10）描述的标准流程，placement 与 routing 都是<strong>两个独立阶段</strong></li>
+<li>工业工具（ICC2 / Fusion Compiler / Innovus）与开源流程（OpenROAD / OpenLane）也<strong>按阶段串行执行</strong></li>
+<li>CTS 甚至<strong>插在二者之间</strong>，进一步说明阶段边界未消失</li>
+</ul>
+<h3 id="sec-4">判断二： <strong>信息与目标函数层面，正在强融合</strong><a class="h-anchor" href="#sec-4" aria-label="本节链接">#</a></h3>
+<ul>
+<li>传统「分离」的痛点已被广泛承认： <strong>HPWL 无法代表真实布线质量</strong>（B4）</li>
+<li>因此主流做法是<strong>在布局阶段就引入布线知识</strong>：
+<ul>
+<li>预测拥塞图 → 约束布局（B5、B6、B9、A3）</li>
+<li>可微分拥塞/时序目标 → 进入布局梯度（B1、B3）</li>
+<li>统一优化 → 联合建模（B2、B8）</li>
+</ul>
+</li>
+</ul>
+<h3 id="sec-5">判断三： <strong>学术前沿明显「一体化」，工业主流是「分离 + 强反馈」</strong><a class="h-anchor" href="#sec-5" aria-label="本节链接">#</a></h3>
+<ul>
+<li>
+<p>学术界： <strong>一体化是明确趋势</strong>（B1–B8 全部属于 co-optimization / unified / differentiable 方向）</p>
+</li>
+<li>
+<p>工业界： <strong>仍是分阶段</strong>，但通过 <strong>Shift-Left / concurrent optimization / physically-aware synthesis</strong> 把信息前移</p>
+</li>
+<li>
+<p>A4 给出最有价值的工业侧证据：ML macro placement 结果<strong>正面但不稳定</strong>，落地受限于</p>
+<ul>
+<li>宏单元位置需要<strong>在全局时钟/流水线规划前稳定</strong></li>
+<li>混合尺寸布局会<strong>恶化 PDN（电源网络）鲁棒性</strong></li>
+<li>结果是<strong>重复性/可复现性</strong>要求高</li>
+</ul>
+</li>
+<li>
+<p><strong>结论</strong>：工业界接受「信息融合」，但对「阶段合并」非常保守</p>
+</li>
+</ul>
+<h3 id="sec-6">判断四： <strong>先进工艺与新场景，正在把二者「推向」一体化</strong><a class="h-anchor" href="#sec-6" aria-label="本节链接">#</a></h3>
+<ul>
+<li>先进节点（7nm/5nm 及以下）：DRC、pin access、拥塞问题爆炸 → 布局若不感知布线基本不可行</li>
+<li><strong>3D IC / Chiplet</strong>：placement 与 routing 在 native 3D EDA 中被认为需要<strong>联合考虑</strong>（A7、B6、B7）</li>
+<li><strong>模拟/模拟混合信号</strong>：因约束强、floorplan 与 routing 高度耦合，一体化需求更迫切（A7、B4、B7）</li>
+</ul>
+<h2 id="sec-4-2">4. 为什么「不能完全合并」？（一体化的现实阻力）<a class="h-anchor" href="#sec-4-2" aria-label="本节链接">#</a></h2>
+<p>文献中反复出现的阻力（尤其 A4、A3、B1）：</p>
+<ol>
+<li><strong>问题规模与复杂度</strong>：联合优化变量数爆炸，精确求解不现实</li>
+<li><strong>可微性难题</strong>：路由是离散、规则驱动的，做可微分需要代理模型（RUDY 等），有精度损失</li>
+<li><strong>预测模型泛化差</strong>：数据驱动拥塞预测<strong>跨设计/跨工艺泛化弱</strong>（B1 明确批评）</li>
+<li><strong>工业可复现性</strong>：阶段合并后难以保证结果可复现与可控（A4）</li>
+<li><strong>下游约束耦合</strong>：PDN、时钟树、流水线规划等对 macro 位置敏感，限制了上游自由（A4）</li>
+<li><strong>工具生态与接口</strong>：过程分离便于工具模块化与数据交接（A3 指出 Fused Actions 会降低模块化）</li>
+</ol>
+<h2 id="sec-5-2">5. 总结与展望<a class="h-anchor" href="#sec-5-2" aria-label="本节链接">#</a></h2>
+<h3 id="2026">当前态势（2026）<a class="h-anchor" href="#2026" aria-label="本节链接">#</a></h3>
+<blockquote>
+<p><strong>流程阶段：分；优化目标与信息：合。</strong></p>
+</blockquote>
+<ul>
+<li>学术前沿正在把 layout 的优化目标从「线长主导」升级为「 <strong>时序 + 可布线性 + 线长</strong>的<strong>多目标、可微分、统一优化</strong>」</li>
+<li>工业实践采用「 <strong>分离流程 + Shift-Left 信息前移</strong>」，用预测与反馈拉近两阶段</li>
+<li>二者是<strong>同一方向的不同推进速度</strong>，不是对立路线</li>
+</ul>
+<h3 id="a2-a3-a7-b1">未来趋势（基于 A2、A3、A7、B1 等）<a class="h-anchor" href="#a2-a3-a7-b1" aria-label="本节链接">#</a></h3>
+<ol>
+<li><strong>融合发生在「目标函数/预测模型」层</strong>，而非「工具阶段」层——短期不会出现真正的单一 P&amp;R 求解器替代分阶段流程</li>
+<li><strong>可微分 + GPU + 多目标自动加权</strong>（如 C3PO 的 MGDA 权重）成为布局主流技术</li>
+<li><strong>Agentic / 生成式 EDA</strong>（A2）会以「流程编排者」身份进一步模糊阶段边界</li>
+<li><strong>先进节点 / 3D IC / 模拟</strong>将成为一体化需求最强的牵引场景</li>
+<li><strong>判断标准变化</strong>：评价不再只看 placement 的 HPWL，而是看 <strong>post-route 的 PPA / DRV</strong>（B1 的 full-flow validation 是范式转变信号）</li>
+</ol>
+<h3 id="sec-7">对深入学习者的建议<a class="h-anchor" href="#sec-7" aria-label="本节链接">#</a></h3>
+<ul>
+<li>学 <strong>placement 算法</strong>时，务必同时理解它「 <strong>为布线预判了什么</strong>」（拥塞模型、时序估计）</li>
+<li>学 <strong>routing 算法</strong>时，要理解它「 <strong>如何反向约束布局</strong>」（DRC、pin access、层分配）</li>
+<li>关注三条主线： <strong>可微分目标</strong>、 <strong>预测式反馈（Shift-Left）</strong> 、 <strong>统一优化（co-optimization）</strong></li>
+</ul>
+<h2 id="sec-6-2">6. 英文名词速查（缩写与术语解释）<a class="h-anchor" href="#sec-6-2" aria-label="本节链接">#</a></h2>
+<blockquote>
+<p>本文正文大量使用英文缩写与专有名词。这里按「类别」集中解释，<strong>按需查阅即可</strong>，不必通读。
+每条格式为：<strong>缩写</strong>｜全称 → 中文含义 + 一句话说明。</p>
+</blockquote>
+<h3 id="sec-6-1">6.1 流程与阶段（P&amp;R 主干）<a class="h-anchor" href="#sec-6-1" aria-label="本节链接">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">缩写 / 术语</th>
+<th style="text-align:left">全称</th>
+<th style="text-align:left">中文含义与说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>P&amp;R / PnR</strong></td>
+<td style="text-align:left">Placement and Routing</td>
+<td style="text-align:left"><strong>布局布线</strong>。后端物理设计的核心统称，也是本文主题</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Placement</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>布局</strong>。给每个标准单元/宏单元找位置</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Routing</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>布线</strong>。用多层金属把该连的引脚连起来</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Floorplan / Floorplanning</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>布局规划</strong>（打地基）。定芯片尺寸、摆 SRAM/IP/模拟宏等&quot;大块头&quot;</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>CTS</strong></td>
+<td style="text-align:left">Clock Tree Synthesis</td>
+<td style="text-align:left"><strong>时钟树综合</strong>。建一棵平衡的时钟分发树，让时钟同时、均匀到达所有触发器</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Physical Design</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>物理设计</strong>。把门级网表变成版图的全过程（floorplan→placement→CTS→routing→签核）</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>post-route</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>布线之后（的）</strong>。如 post-route 验证 = 在真实布线完成后再回头评价布局质量</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>flow</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>流程 / 工具流</strong>。如 &quot;商业 flow&quot; = 工业界实际使用的整套工具链</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>full-flow validation</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>全流程验证</strong>。本文特指把新方法放进完整商业流程里跑一遍再下结论</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>signoff</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>签核</strong>。时序/功耗/DRC 全部达标的最终检查</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>split / merge 阶段</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left">阶段「拆分 / 合并」，即本文的核心争论点</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="sec-6-2-2">6.2 指标与度量（评价布局布线好坏）<a class="h-anchor" href="#sec-6-2-2" aria-label="本节链接">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">缩写 / 术语</th>
+<th style="text-align:left">全称</th>
+<th style="text-align:left">中文含义与说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>HPWL</strong></td>
+<td style="text-align:left">Half-Perimeter Wire Length</td>
+<td style="text-align:left"><strong>半周长线长</strong>。用包围一个线网所有引脚的最小矩形的&quot;半周长&quot;来估算线长；便宜好用，但<strong>只是直线近似</strong>，反映不了真实走线与拥塞——这正是&quot;布局布线分离&quot;的根本痛点</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>wirelength</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>线长</strong>。所有连线长度之和，传统布局的首要目标</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>routed wirelength</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>布线后线长</strong>。真实布线完成后的线长，比 HPWL 可信得多</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>TNS</strong></td>
+<td style="text-align:left">Total Negative Slack</td>
+<td style="text-align:left"><strong>总负裕量</strong>。所有&quot;迟到&quot;路径的裕量（负数）之和，越小越好</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>WNS</strong></td>
+<td style="text-align:left">Worst Negative Slack</td>
+<td style="text-align:left"><strong>最差负裕量</strong>。最严重那条路径的裕量，是最关键的时序红线指标</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>PPA</strong></td>
+<td style="text-align:left">Power, Performance, Area</td>
+<td style="text-align:left"><strong>功耗、性能、面积</strong>。芯片设计的三大终极指标，也是评价&quot;该不该一体化&quot;的裁判</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>switching power</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>开关功耗</strong>。信号翻转造成的动态功耗，与线长/电容强相关</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>congestion</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>拥塞</strong>。某区域需要的布线资源超过可用资源；布线阶段最大的敌人</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>routability</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>可布线性</strong>。这份布局&quot;能不能布得下&quot;的综合性质</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>DRV</strong></td>
+<td style="text-align:left">Design Rule Violation</td>
+<td style="text-align:left"><strong>设计规则违例</strong>。布线结果违反制造规则的次数，先进节点最重要的质量指标之一</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>DRC</strong></td>
+<td style="text-align:left">Design Rule Check</td>
+<td style="text-align:left"><strong>设计规则检查</strong>。最小线宽/间距/面积等制造规则的检查，违反即废片</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>pin access</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>引脚可达性</strong>。先进节点下，标准单元引脚太密导致布线器&quot;够不着&quot;的问题</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>density</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>密度</strong>。单元/布线资源的使用率，过高即拥塞</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>sub-10nm</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>10 纳米以下工艺节点</strong>。代表最先进、约束最苛刻的一代工艺</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>block</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>设计块 / 模块</strong>。一颗大芯片里相对独立的一块电路，可单独布局</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>benchmark</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>基准（测试用例）</strong>。学界公平比较算法用的标准设计集合</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="sec-6-3">6.3 算法与方法（本文的&quot;武器库&quot;）<a class="h-anchor" href="#sec-6-3" aria-label="本节链接">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">缩写 / 术语</th>
+<th style="text-align:left">全称</th>
+<th style="text-align:left">中文含义与说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>ADMM</strong></td>
+<td style="text-align:left">Alternating Direction Method of Multipliers</td>
+<td style="text-align:left"><strong>交替方向乘子法</strong>。一种把大优化问题拆成若干子问题交替求解的数学框架；RUPlace 用它把布局与布线写进同一个问题</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>RL</strong></td>
+<td style="text-align:left">Reinforcement Learning</td>
+<td style="text-align:left"><strong>强化学习</strong>。让智能体通过试错学策略；本文中用于宏单元布局、整体布局等</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>ML</strong></td>
+<td style="text-align:left">Machine Learning</td>
+<td style="text-align:left"><strong>机器学习</strong></td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>DL</strong></td>
+<td style="text-align:left">Deep Learning</td>
+<td style="text-align:left"><strong>深度学习</strong></td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>AI</strong></td>
+<td style="text-align:left">Artificial Intelligence</td>
+<td style="text-align:left"><strong>人工智能</strong>（ML/DL 的上位概念）</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>GNN</strong></td>
+<td style="text-align:left">Graph Neural Network</td>
+<td style="text-align:left"><strong>图神经网络</strong>。电路天然是图（单元=节点、线网=边），因此 GNN 很适合预测拥塞/可布线性/时序</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>RUDY</strong></td>
+<td style="text-align:left">Rectangular Uniform wire DensitY</td>
+<td style="text-align:left"><strong>矩形均匀线密度</strong>。一种<strong>布线需求估算模型</strong>：把每个线网的走线需求均匀摊到其包围盒上，得到一张二维&quot;拥塞热力图&quot;，供布局阶段提前避险；因形式简单而<strong>天然可微</strong>，故被广泛用作可微分布局的代理目标</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>MGDA</strong></td>
+<td style="text-align:left">Multiple-Gradient Descent Algorithm</td>
+<td style="text-align:left"><strong>多重梯度下降算法</strong>。把经典最速下降推广到<strong>多目标</strong>情形，求一个对所有目标都下降的公共方向，收敛到 Pareto 稳定点；C3PO 用它给 timing / routability / wirelength 自动定权重（免去手工调参）</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>proxy model</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>代理模型</strong>。真实布线是离散、规则驱动的，无法直接求导；用 RUDY 这类可微近似替代，代价是精度损失</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>differentiable</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>可微分的</strong>。把目标写成对 cell 坐标可求导的形式，从而能用梯度法直接优化</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>co-optimization</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>协同优化 / 联合优化</strong>。多个目标（或多个阶段）一起优化，而非先后串行</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>end-to-end</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>端到端的</strong>。从输入直接学到输出，中间不显式分阶段</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>unified</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>统一的</strong>。把原本分离的建模/求解合并为一体</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>refine / refinement</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>精修 / 迭代细化</strong>。在已有解上反复小幅改进</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>iteration</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>迭代</strong>。设计流程&quot;打回重做&quot;的本质特征</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>routability-driven placement</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>可布线性驱动布局</strong>。把&quot;能不能布下&quot;作为布局的优化目标</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>timing-driven placement</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>时序驱动布局</strong>。把&quot;跑得够不够快&quot;作为布局的优化目标</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>macro placement</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>宏单元布局</strong>。摆放 SRAM、IP 核、模拟模块等大块头，是布局里最难、最像&quot;下棋&quot;的部分</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>post-layout estimation</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>版图后估算</strong>。在版图完成前预测其性能/功耗</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>design space exploration</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>设计空间探索</strong>。在众多设计选项中搜索最优组合</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>native 3D EDA</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>原生三维 EDA</strong>。为 3D 堆叠芯片从头设计的工具，而非把 2D 工具硬套</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="sec-6-4">6.4 范式与理念（本文的趋势判断用词）<a class="h-anchor" href="#sec-6-4" aria-label="本节链接">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">缩写 / 术语</th>
+<th style="text-align:left">全称</th>
+<th style="text-align:left">中文含义与说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>Shift-Left</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>左移 / 任务前移</strong>。把原本在流程<strong>后段</strong>才做的事（如布线预测）提前到<strong>前段</strong>（布局）去做。本文工业界主流策略的核心词</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Virtual Prototypes</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>虚拟样机</strong>。Shift-Left 的两大范式之一：用 ML/DL 模型<strong>预测</strong>下游行为（拥塞、时序），让早期阶段&quot;看见未来&quot;</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Fused Actions</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>动作融合</strong>。Shift-Left 的另一范式：把后阶段动作<strong>前移并与前阶段融合</strong>，如物理感知综合</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>divide-and-conquer</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>分而治之</strong>。传统策略：把大问题拆成小问题分别解决。A3 认为 EDA 正从它走向融合</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>fusion</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>融合</strong>。与上一条相对，指打破阶段隔离</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>separation</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>分离</strong>。流程阶段彼此独立、串行执行</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>concurrent optimization</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>并发优化 / 同步优化</strong>。多个优化目标或阶段同时推进</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>physically-aware synthesis</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>物理感知综合</strong>。在综合阶段就考虑物理布局/布线的影响</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>inherently interdependent</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>内在相互依赖</strong>。B7 的原话，形容 floorplanning 与 routing 的关系</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>loose coupling</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>松散耦合</strong>。两阶段只交换少量信息，是传统的协作方式</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>tight / close coupling</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>紧密耦合</strong>。两阶段频繁交换信息、互相反馈</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Agentic EDA</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>智能体化 EDA</strong>。让 AI Agent 自主编排、执行 EDA 流程的新范式（A2）</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Human-in-the-Loop</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>人在回路</strong>。关键决策仍由人把关，AI 做辅助与加速（A11）</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>generative</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>生成式</strong>。直接用模型&quot;生成&quot;布局/网表，而非逐步优化</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>black-box optimization</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>黑盒优化</strong>。不知道目标函数解析形式时的优化方法</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Pareto</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>帕累托（最优）</strong>。多目标下&quot;无法在不损害任一目标的前提下改进&quot;的状态</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="sec-6-5">6.5 电路与工艺基础<a class="h-anchor" href="#sec-6-5" aria-label="本节链接">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">缩写 / 术语</th>
+<th style="text-align:left">全称</th>
+<th style="text-align:left">中文含义与说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>IC</strong></td>
+<td style="text-align:left">Integrated Circuit</td>
+<td style="text-align:left"><strong>集成电路 / 芯片</strong></td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>VLSI</strong></td>
+<td style="text-align:left">Very Large Scale Integration</td>
+<td style="text-align:left"><strong>超大规模集成（电路）</strong>。动辄上亿门的芯片规模</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>EDA</strong></td>
+<td style="text-align:left">Electronic Design Automation</td>
+<td style="text-align:left"><strong>电子设计自动化</strong>。用软件工具完成芯片设计的整个产业</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>RTL</strong></td>
+<td style="text-align:left">Register Transfer Level</td>
+<td style="text-align:left"><strong>寄存器传输级</strong>。用硬件描述语言描述电路行为的抽象层次，是数字流程的入口</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>cell</strong></td>
+<td style="text-align:left">standard cell</td>
+<td style="text-align:left"><strong>标准单元</strong>。综合出的与门/或门/触发器等&quot;等高积木&quot;，布局的基本摆放对象</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>net / netlist</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>线网 / 网表</strong>。net = 一组需要连在一起的引脚；netlist = &quot;用哪些器件、怎么连&quot;的清单</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>PDK</strong></td>
+<td style="text-align:left">Process Design Kit</td>
+<td style="text-align:left"><strong>工艺设计套件</strong>。晶圆厂提供的工艺规则与器件模型；不遵守就无法流片</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>GPU</strong></td>
+<td style="text-align:left">Graphics Processing Unit</td>
+<td style="text-align:left"><strong>图形处理器</strong>。既是本文 A4 的测试对象（真实 GPU 设计），也是加速布局求解的算力来源</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>PDN</strong></td>
+<td style="text-align:left">Power Delivery Network</td>
+<td style="text-align:left"><strong>电源分配网络</strong>。把电送到芯片各处的供电网；宏单元摆放不当会恶化它的鲁棒性</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>pin</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>引脚</strong>。单元的对外连接点</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>via</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>过孔</strong>。连接不同金属层的竖直通道</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>layer / 层分配</strong></td>
+<td style="text-align:left">metal layer</td>
+<td style="text-align:left"><strong>金属层</strong>。布线用的多层金属，相邻层走线方向通常互相垂直</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>discrete / 离散</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>离散的</strong>。取值不连续、不可直接求导——布线的本质困难之一</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>analog IC</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>模拟集成电路</strong>。约束强、手工设计为主，与数字流程完全不同</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>mixed-signal</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>混合信号</strong>。一颗芯片里同时含模拟与数字电路</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>3D IC / Chiplet</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>三维集成芯片 / 芯粒</strong>。把多颗裸片堆叠或拼装，布局与布线必须联合考虑</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>timing</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>时序</strong>。信号能否在一个时钟周期内到达，是贯穿全流程的第一主线</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>clock</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>时钟</strong>。全芯片的节拍信号</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>pipeline</strong></td>
+<td style="text-align:left">—</td>
+<td style="text-align:left"><strong>流水线</strong>。把长逻辑链切成多级以提高频率；其规划对宏单元位置很敏感</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="sec-6-6">6.6 论文代号（B 类前沿工作）<a class="h-anchor" href="#sec-6-6" aria-label="本节链接">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">代号</th>
+<th style="text-align:left">出处</th>
+<th style="text-align:left">全称 / 含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>C3PO</strong></td>
+<td style="text-align:left">ASP-DAC 2026 (NVIDIA)</td>
+<td style="text-align:left">取自论文标题首字母：<strong>C</strong>ommercial-quality、<strong>C</strong>oherent、<strong>C</strong>oncurrent、<strong>O</strong>ptimization（商业级质量、连贯且并发的 timing/routability/wirelength 优化）。可微分布局代表工作，用 MGDA 自动加权，并做 full-flow 验证</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>RUPlace</strong></td>
+<td style="text-align:left">DAC 2025</td>
+<td style="text-align:left"><strong>R</strong>outability + <strong>U</strong>nified + <strong>Place</strong>：用 ADMM 把布局与布线<strong>统一</strong>建模求解</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>RoutePlacer</strong></td>
+<td style="text-align:left">KDD 2024</td>
+<td style="text-align:left">Route + Placer：用 GNN 做<strong>端到端可布线性感知</strong>的布局器</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>DCO-3D</strong></td>
+<td style="text-align:left">DAC 2025</td>
+<td style="text-align:left"><strong>D</strong>ifferentiable <strong>C</strong>ongestion <strong>O</strong>ptimization for <strong>3D</strong> ICs：预测 3D 布线拥塞并反向修正布局</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>GrandPlan</strong></td>
+<td style="text-align:left">ACM 2026</td>
+<td style="text-align:left">可微分组目标 + 可布线性约束的<strong>顶层同时规划</strong></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="sec-6-7">6.7 会议、期刊与机构<a class="h-anchor" href="#sec-6-7" aria-label="本节链接">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">缩写 / 全称</th>
+<th style="text-align:left">类型</th>
+<th style="text-align:left">说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>ACM</strong></td>
+<td style="text-align:left">学会</td>
+<td style="text-align:left">Association for Computing Machinery，美国计算机学会；&quot;ACM T-?&quot; 指被某 ACM Transactions 期刊收录</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>IEEE</strong></td>
+<td style="text-align:left">学会</td>
+<td style="text-align:left">Institute of Electrical and Electronics Engineers，电气电子工程师学会</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>DAC</strong></td>
+<td style="text-align:left">会议</td>
+<td style="text-align:left">Design Automation Conference，设计自动化会议（EDA 领域顶会之一）</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>ASP-DAC</strong></td>
+<td style="text-align:left">会议</td>
+<td style="text-align:left">Asia and South Pacific Design Automation Conference，亚太设计自动化会议</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>ISPD</strong></td>
+<td style="text-align:left">会议</td>
+<td style="text-align:left">International Symposium on Physical Design，国际物理设计研讨会（P&amp;R 最对口）</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>GLSVLSI</strong></td>
+<td style="text-align:left">会议</td>
+<td style="text-align:left">Great Lakes Symposium on VLSI，VLSI 领域老牌会议</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>KDD</strong></td>
+<td style="text-align:left">会议</td>
+<td style="text-align:left">ACM SIGKDD Conference on Knowledge Discovery and Data Mining，数据挖掘顶会</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>TCAD</strong></td>
+<td style="text-align:left">期刊</td>
+<td style="text-align:left">IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>IEEE Access</strong></td>
+<td style="text-align:left">期刊</td>
+<td style="text-align:left">IEEE 旗下开放获取综合期刊</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>MDPI</strong></td>
+<td style="text-align:left">出版社</td>
+<td style="text-align:left">Multidisciplinary Digital Publishing Institute，开放获取出版社（如 Electronics）</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Springer</strong></td>
+<td style="text-align:left">出版社</td>
+<td style="text-align:left">国际学术出版社</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>arXiv</strong></td>
+<td style="text-align:left">预印本平台</td>
+<td style="text-align:left">论文预印本网站（如 arXiv 2509.14551）</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>JCTAM</strong></td>
+<td style="text-align:left">期刊</td>
+<td style="text-align:left">Journal of Theoretical, Computational and Applied Mechanics</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Integration (VLSI Journal)</strong></td>
+<td style="text-align:left">期刊</td>
+<td style="text-align:left">Elsevier 旗下 VLSI 集成相关期刊</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>NVIDIA</strong></td>
+<td style="text-align:left">公司</td>
+<td style="text-align:left">英伟达；B1（C3PO）、B6（DCO-3D）等来自其 EDA 研究团队</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="sec-6-8">6.8 工具与流程名<a class="h-anchor" href="#sec-6-8" aria-label="本节链接">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">名称</th>
+<th style="text-align:left">类型</th>
+<th style="text-align:left">说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>ICC2</strong></td>
+<td style="text-align:left">商业工具</td>
+<td style="text-align:left">Synopsys IC Compiler II，工业级布局布线工具</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Fusion Compiler</strong></td>
+<td style="text-align:left">商业工具</td>
+<td style="text-align:left">Synopsys 的 RTL-to-GDSII 统一实现平台（&quot;融合&quot;本身就是名字）</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Innovus</strong></td>
+<td style="text-align:left">商业工具</td>
+<td style="text-align:left">Cadence 的布局布线工具</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>OpenROAD</strong></td>
+<td style="text-align:left">开源工具</td>
+<td style="text-align:left">开源 RTL-to-GDSII 全流程基础设施</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>OpenLane</strong></td>
+<td style="text-align:left">开源流程</td>
+<td style="text-align:left">基于 OpenROAD 的开源自动化数字设计流程</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="sec-6-9">6.9 文档里的其它英文小词<a class="h-anchor" href="#sec-6-9" aria-label="本节链接">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">词</th>
+<th style="text-align:left">含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>TL;DR</strong></td>
+<td style="text-align:left">Too Long; Didn't Read → <strong>太长不看</strong>，即&quot;一句话结论&quot;</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Survey</strong></td>
+<td style="text-align:left"><strong>综述</strong>。系统梳理某个方向已有工作的论文类型</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Invited</strong></td>
+<td style="text-align:left"><strong>特邀（论文）</strong>。会议特邀报告对应的论文</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>contest</strong></td>
+<td style="text-align:left"><strong>竞赛</strong>。如 ISPD 全球布线竞赛，其赛道题目常成为事实基准</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>state-of-the-art / SOTA</strong></td>
+<td style="text-align:left"><strong>当前最优水平</strong></td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>routing demand</strong></td>
+<td style="text-align:left"><strong>布线需求</strong>。某处&quot;想要走多少线&quot;的估计量</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>gap</strong></td>
+<td style="text-align:left"><strong>差距</strong>。本文 5.2 表中的 &quot;Gap&quot; 指学术前沿与工业落地之间的落差</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>LPDDR</strong></td>
+<td style="text-align:left">Low Power Double Data Rate SDRAM，移动设备用低功耗内存</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>DRAM</strong></td>
+<td style="text-align:left">Dynamic Random Access Memory，动态随机存储器</td>
+</tr>
+</tbody>
+</table></div>
+<blockquote>
+<p><strong>阅读建议</strong>：第一遍读正文时，遇到不认识的缩写可直接回查本表；三张最重要、出现频率最高的表是 <strong>6.2（指标）</strong>、<strong>6.3（方法）</strong> 和 <strong>6.4（范式）</strong>。</p>
+</blockquote>
+<h2 id="sec-8">附：主要参考链接<a class="h-anchor" href="#sec-8" aria-label="本节链接">#</a></h2>
+<ul>
+<li>Physical Design: Methodologies and Developments — <a href="https://arxiv.org/html/2409.04726v1">https://arxiv.org/html/2409.04726v1</a></li>
+<li>The Dawn of Agentic EDA — <a href="https://arxiv.org/html/2512.23189v2">https://arxiv.org/html/2512.23189v2</a></li>
+<li>Shift-Left Techniques in EDA: A Survey — <a href="https://arxiv.org/html/2509.14551v1">https://arxiv.org/html/2509.14551v1</a></li>
+<li>An Industrial Perspective on ML-Macro Placement Methods — <a href="https://dl.acm.org/doi/full/10.1145/3716368.3735170">https://dl.acm.org/doi/full/10.1145/3716368.3735170</a></li>
+<li>A Survey on Learning-Based PnR Optimization — <a href="https://ieeexplore.ieee.org/document/11242165">https://ieeexplore.ieee.org/document/11242165</a></li>
+<li>Reinforcement Learning in ICs — <a href="https://sciencedirect.com/science/article/pii/S0167926025001178">https://sciencedirect.com/science/article/pii/S0167926025001178</a></li>
+<li>A Survey of M/DL Techniques in Analog IC Layout Synthesis — <a href="https://mdpi.com/3042-5344/1/1/2">https://mdpi.com/3042-5344/1/1/2</a></li>
+<li>From RTL to Fabrication: Open-Source EDA Survey — <a href="https://mdpi.com/2079-9292/15/5/1048">https://mdpi.com/2079-9292/15/5/1048</a></li>
+<li>ISPD 2025 Global Routing Contest — <a href="https://dl.acm.org/doi/10.1145/3698364.3715706">https://dl.acm.org/doi/10.1145/3698364.3715706</a></li>
+<li>C3PO — <a href="https://research.nvidia.com/labs/electronic-design-automation/publication/lu2026aspdac">https://research.nvidia.com/labs/electronic-design-automation/publication/lu2026aspdac</a></li>
+<li>RUPlace — <a href="https://yibolin.com/publications/papers/PLACE_DAC2025_Chen.pdf">https://yibolin.com/publications/papers/PLACE_DAC2025_Chen.pdf</a></li>
+<li>Differentiable Net-Moving &amp; Local Congestion Mitigation — <a href="https://dl.acm.org/doi/10.1109/DAC63849.2025.11133117">https://dl.acm.org/doi/10.1109/DAC63849.2025.11133117</a></li>
+<li>A Co-Optimization Method for Analog IC P&amp;R — <a href="https://mdpi.com/2079-9292/14/7/1349">https://mdpi.com/2079-9292/14/7/1349</a></li>
+<li>RoutePlacer — <a href="https://dl.acm.org/doi/10.1145/3637528.3671895">https://dl.acm.org/doi/10.1145/3637528.3671895</a></li>
+<li>DCO-3D — <a href="https://gtcad.gatech.edu/www/papers/Hsiao-DAC25-1.pdf">https://gtcad.gatech.edu/www/papers/Hsiao-DAC25-1.pdf</a></li>
+<li>Advancing Routing-Awareness in Analog ICs Floorplanning — <a href="https://arxiv.org/html/2510.15387v1">https://arxiv.org/html/2510.15387v1</a></li>
+<li>GNN-Based Placement Optimization Guidance — <a href="https://mdpi.com/2079-9292/14/2/329">https://mdpi.com/2079-9292/14/2/329</a></li>
+<li>OpenROAD — <a href="https://openroad.readthedocs.io/en/latest/main/README.html">https://openroad.readthedocs.io/en/latest/main/README.html</a></li>
+</ul>
+<h2 id="sec-1">1. 文献清单（22 篇，2024–2026）<a class="h-anchor" href="#sec-1" aria-label="本节链接">#</a></h2>
+<h3 id="a-12">A 类：综述 / 综述性论文（12 篇）<a class="h-anchor" href="#a-12" aria-label="本节链接">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">#</th>
+<th style="text-align:left">标题</th>
+<th style="text-align:left">年份</th>
+<th style="text-align:left">出处</th>
+<th style="text-align:left">与 P&amp;R 关系</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">A1</td>
+<td style="text-align:left"><strong>Physical Design: Methodologies and Developments</strong></td>
+<td style="text-align:left">2024</td>
+<td style="text-align:left">arXiv 2409.04726</td>
+<td style="text-align:left">系统梳理物理设计全流程（floorplan→placement→CTS→routing→验证）的传统<strong>分阶段</strong>方法论</td>
+</tr>
+<tr>
+<td style="text-align:left">A2</td>
+<td style="text-align:left"><strong>The Dawn of Agentic EDA: A Survey of Autonomous Digital Chip Design</strong></td>
+<td style="text-align:left">2025/2026</td>
+<td style="text-align:left">arXiv 2512.23189</td>
+<td style="text-align:left">综述生成式/智能体 EDA，含物理设计范式图（RL 把 placement 当序列博弈、扩散模型生成布局）</td>
+</tr>
+<tr>
+<td style="text-align:left">A3</td>
+<td style="text-align:left"><strong>Shift-Left Techniques in Electronic Design Automation: A Survey</strong></td>
+<td style="text-align:left">2025/2026</td>
+<td style="text-align:left">arXiv 2509.14551；ACM T-? 2026</td>
+<td style="text-align:left"><strong>最直接相关</strong>：formalize「任务前移/融合」，提出 Virtual Prototypes + Fused Actions 两大范式</td>
+</tr>
+<tr>
+<td style="text-align:left">A4</td>
+<td style="text-align:left"><strong>An Industrial Perspective on ML-Macro Placement Methods</strong></td>
+<td style="text-align:left">2025</td>
+<td style="text-align:left">GLSVLSI 2025 (ACM)</td>
+<td style="text-align:left"><strong>工业实证</strong>：ML/RL macro placement 在真实 GPU 设计上的效果与落地障碍</td>
+</tr>
+<tr>
+<td style="text-align:left">A5</td>
+<td style="text-align:left"><strong>A Survey on Learning-Based PnR Optimization for VLSI Physical Design Automation</strong></td>
+<td style="text-align:left">2025</td>
+<td style="text-align:left">IEEE Access</td>
+<td style="text-align:left">直接以 PnR 为对象，综述传统算法 + 学习型优化</td>
+</tr>
+<tr>
+<td style="text-align:left">A6</td>
+<td style="text-align:left"><strong>Reinforcement Learning in Integrated Circuits: Design, Optimization and Security</strong></td>
+<td style="text-align:left">2025</td>
+<td style="text-align:left">Integration (VLSI Journal)</td>
+<td style="text-align:left">综述 RL 在 IC（含 macro placement / chip placement / layout）的应用</td>
+</tr>
+<tr>
+<td style="text-align:left">A7</td>
+<td style="text-align:left"><strong>A Survey of Machine and Deep Learning Techniques in Analog IC Layout Synthesis</strong></td>
+<td style="text-align:left">2025</td>
+<td style="text-align:left">MDPI (review)</td>
+<td style="text-align:left">覆盖 analog placement、routing、post-layout estimation，指出二者<strong>内在相互依赖</strong></td>
+</tr>
+<tr>
+<td style="text-align:left">A8</td>
+<td style="text-align:left"><strong>AI/ML for VLSI Chip Design Automation: A Comprehensive Survey</strong></td>
+<td style="text-align:left">2026</td>
+<td style="text-align:left">Springer</td>
+<td style="text-align:left">覆盖设计空间探索、physical design 优化、性能/功耗预测</td>
+</tr>
+<tr>
+<td style="text-align:left">A9</td>
+<td style="text-align:left"><strong>From RTL to Fabrication: Survey of Open-Source EDA Tools and PDKs</strong></td>
+<td style="text-align:left">2026</td>
+<td style="text-align:left">MDPI Electronics</td>
+<td style="text-align:left">综述开源 EDA 全栈，明确把 floorplan/placement/routing 作为<strong>顺序阶段</strong>（OpenLane/OpenROAD）</td>
+</tr>
+<tr>
+<td style="text-align:left">A10</td>
+<td style="text-align:left"><strong>Invited: ISPD 2025 Performance-Driven Large Scale Global Routing Contest</strong></td>
+<td style="text-align:left">2025</td>
+<td style="text-align:left">ISPD 2025 (ACM)</td>
+<td style="text-align:left">布线侧最新基准与趋势：从 ISPD placement 基准派生路由基准，接入 OpenROAD 评估</td>
+</tr>
+<tr>
+<td style="text-align:left">A11</td>
+<td style="text-align:left"><strong>Human-in-the-Loop AI EDA for Chip Design</strong></td>
+<td style="text-align:left">2026</td>
+<td style="text-align:left">JCTAM</td>
+<td style="text-align:left">以 placement &amp; routing workflow 为例，讨论人在回路与预测/反馈融合</td>
+</tr>
+<tr>
+<td style="text-align:left">A12</td>
+<td style="text-align:left"><strong>Artificial Intelligence in VLSI Physical Design ... Optimize PPA</strong></td>
+<td style="text-align:left">2024</td>
+<td style="text-align:left">(conference/journal)</td>
+<td style="text-align:left">AI 用于 physical design 各阶段（含 P&amp;R）的综述</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="b-10">B 类：代表性前沿工作（10 篇，用于佐证「一体化」趋势）<a class="h-anchor" href="#b-10" aria-label="本节链接">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">#</th>
+<th style="text-align:left">标题</th>
+<th style="text-align:left">年份</th>
+<th style="text-align:left">出处</th>
+<th style="text-align:left">一体化体现</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">B1</td>
+<td style="text-align:left"><strong>C3PO: Commercial-Quality Global Placement via Coherent, Concurrent Timing, Routability, and Wirelength Optimization</strong></td>
+<td style="text-align:left">2026</td>
+<td style="text-align:left">ASP-DAC 2026 (NVIDIA)</td>
+<td style="text-align:left">可微分全局布局， <strong>同时</strong>优化 timing + routability + wirelength，用真实商业流程做 post-route 验证</td>
+</tr>
+<tr>
+<td style="text-align:left">B2</td>
+<td style="text-align:left"><strong>RUPlace: Optimizing Routability via Unified Placement and Routing</strong></td>
+<td style="text-align:left">2025</td>
+<td style="text-align:left">DAC 2025</td>
+<td style="text-align:left">ADMM 框架<strong>统一</strong> placement 与 routing 的建模与求解</td>
+</tr>
+<tr>
+<td style="text-align:left">B3</td>
+<td style="text-align:left"><strong>Differentiable Net-Moving and Local Congestion Mitigation for Routability-Driven Global Placement</strong></td>
+<td style="text-align:left">2025</td>
+<td style="text-align:left">DAC 2025</td>
+<td style="text-align:left">可微分布线拥塞目标直接进入布局优化，DRV 平均降 40%</td>
+</tr>
+<tr>
+<td style="text-align:left">B4</td>
+<td style="text-align:left"><strong>A Co-Optimization Method for Analog IC Placement and Routing Based on Sequence Pairs and Random Forests</strong></td>
+<td style="text-align:left">2025</td>
+<td style="text-align:left">MDPI Electronics</td>
+<td style="text-align:left">迭代式 P&amp;R <strong>联合优化</strong>，用 routing 反馈驱动 placement refinement</td>
+</tr>
+<tr>
+<td style="text-align:left">B5</td>
+<td style="text-align:left"><strong>RoutePlacer: An End-to-End Routability-Aware Placer with Graph Neural Networks</strong></td>
+<td style="text-align:left">2024</td>
+<td style="text-align:left">KDD 2024</td>
+<td style="text-align:left">端到端可布线性感知布局，用 GNN 预测可布线性</td>
+</tr>
+<tr>
+<td style="text-align:left">B6</td>
+<td style="text-align:left"><strong>DCO-3D: Differentiable Congestion Optimization in 3D ICs</strong></td>
+<td style="text-align:left">2025</td>
+<td style="text-align:left">DAC 2025</td>
+<td style="text-align:left">预测 post-3D-routing 拥塞图并<strong>反向修正 placement</strong></td>
+</tr>
+<tr>
+<td style="text-align:left">B7</td>
+<td style="text-align:left"><strong>Advancing Routing-Awareness in Analog ICs Floorplanning</strong></td>
+<td style="text-align:left">2025</td>
+<td style="text-align:left">arXiv 2510.15387</td>
+<td style="text-align:left">明确指出 floorplanning 与 routing「inherently interdependent」，做路由感知布局</td>
+</tr>
+<tr>
+<td style="text-align:left">B8</td>
+<td style="text-align:left"><strong>GrandPlan: Differentiable, Simultaneous Top-Level ...</strong></td>
+<td style="text-align:left">2026</td>
+<td style="text-align:left">ACM</td>
+<td style="text-align:left">可微分组目标 + 可布线性约束的顶层同时规划</td>
+</tr>
+<tr>
+<td style="text-align:left">B9</td>
+<td style="text-align:left"><strong>GNN-Based Placement Optimization Guidance Framework</strong></td>
+<td style="text-align:left">2025</td>
+<td style="text-align:left">MDPI Electronics</td>
+<td style="text-align:left">图学习预测物理/时序指标， <strong>反馈进工具流</strong>改善布局质量</td>
+</tr>
+<tr>
+<td style="text-align:left">B10</td>
+<td style="text-align:left"><strong>An Updated Assessment of RL for Macro Placement</strong></td>
+<td style="text-align:left">2024/2025</td>
+<td style="text-align:left">IEEE TCAD</td>
+<td style="text-align:left">对 RL macro placement 的严格基准重评，含 sub-10nm 公开基准</td>
+</tr>
+</tbody>
+</table></div>
+<blockquote>
+<p>说明：A 类为「综述性」文献主证据；B 类为代表 2024–2026 年最相关的<strong>前沿方法</strong>，用于支撑趋势判断。合计 22 篇，满足「不少于 20 篇」要求。</p>
+</blockquote>
+<hr>
+
+</main>
+</div>
+<button class="backtop" id="backtop" type="button" aria-label="回到顶部">↑</button>
+<script>
+(function () {
+  'use strict';
+
+  var root = document.documentElement;
+
+  /* ---------- 主题 ---------- */
+  var THEME_KEY = 'prdoc-theme';
+  function readTheme() {
+    try { return localStorage.getItem(THEME_KEY); } catch (e) { return null; }
+  }
+  function applyTheme(t) {
+    root.setAttribute('data-theme', t);
+    var btn = document.getElementById('themeBtn');
+    if (btn) {
+      btn.textContent = t === 'dark' ? '☀' : '☾';
+      btn.setAttribute('aria-label', t === 'dark' ? '切换到浅色主题' : '切换到深色主题');
+    }
+  }
+  var saved = readTheme();
+  var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme(saved || (prefersDark ? 'dark' : 'light'));
+  var themeBtn = document.getElementById('themeBtn');
+  if (themeBtn) {
+    themeBtn.addEventListener('click', function () {
+      var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+      try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+    });
+  }
+
+  /* ---------- 移动端抽屉 ---------- */
+  var sidebar = document.getElementById('sidebar');
+  var mask = document.getElementById('mask');
+  var menuBtn = document.getElementById('menuBtn');
+  function closeDrawer() {
+    if (sidebar) sidebar.classList.remove('open');
+    if (mask) mask.classList.remove('show');
+  }
+  if (menuBtn) {
+    menuBtn.addEventListener('click', function () {
+      var open = sidebar.classList.toggle('open');
+      if (mask) mask.classList.toggle('show', open);
+    });
+  }
+  if (mask) mask.addEventListener('click', closeDrawer);
+
+  /* ---------- 目录：折叠 ---------- */
+  var groups = Array.prototype.slice.call(document.querySelectorAll('.nav-group'));
+  groups.forEach(function (g) {
+    var chev = g.querySelector(':scope > .nav-row > .chev');
+    if (!chev) return;
+    chev.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      g.classList.toggle('collapsed');
+    });
+  });
+
+  var expandAll = document.getElementById('expandAll');
+  var collapseAll = document.getElementById('collapseAll');
+  if (expandAll) expandAll.addEventListener('click', function () {
+    groups.forEach(function (g) { g.classList.remove('collapsed'); });
+  });
+  if (collapseAll) collapseAll.addEventListener('click', function () {
+    groups.forEach(function (g) { g.classList.add('collapsed'); });
+  });
+
+  /* ---------- 目录：搜索过滤 ---------- */
+  var navSearch = document.getElementById('navSearch');
+  var navEmpty = document.getElementById('navEmpty');
+  function filterNav() {
+    var q = (navSearch.value || '').trim().toLowerCase();
+    var anyVisible = false;
+    groups.forEach(function (g) {
+      var links = Array.prototype.slice.call(g.querySelectorAll('.nav-link'));
+      var groupHit = false;
+      links.forEach(function (a) {
+        var hit = !q || a.textContent.toLowerCase().indexOf(q) !== -1;
+        a.classList.toggle('hidden', !hit);
+        if (hit) groupHit = true;
+      });
+      g.classList.toggle('hidden', !groupHit);
+      if (groupHit) {
+        anyVisible = true;
+        if (q) g.classList.remove('collapsed');
+      }
+    });
+    var topLinks = Array.prototype.slice.call(document.querySelectorAll('.nav > .nav-link'));
+    topLinks.forEach(function (a) {
+      var hit = !q || a.textContent.toLowerCase().indexOf(q) !== -1;
+      a.classList.toggle('hidden', !hit);
+      if (hit) anyVisible = true;
+    });
+    if (navEmpty) navEmpty.style.display = anyVisible ? 'none' : 'block';
+  }
+  if (navSearch) {
+    navSearch.addEventListener('input', filterNav);
+    navSearch.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { navSearch.value = ''; filterNav(); }
+    });
+  }
+
+  /* ---------- 滚动：进度条 / 回顶 / 高亮 ---------- */
+  var progress = document.getElementById('progress');
+  var backtop = document.getElementById('backtop');
+  var headings = Array.prototype.slice.call(document.querySelectorAll('.doc h1[id], .doc h2[id], .doc h3[id], .doc h4[id]'));
+  var linkMap = {};
+  Array.prototype.slice.call(document.querySelectorAll('.nav-link[href^="#"]')).forEach(function (a) {
+    linkMap[a.getAttribute('href').slice(1)] = a;
+  });
+
+  var activeId = null;
+  function ensureVisible(link) {
+    if (!sidebar || !link) return;
+    var lr = link.getBoundingClientRect();
+    var sr = sidebar.getBoundingClientRect();
+    if (lr.top < sr.top + 8 || lr.bottom > sr.bottom - 8) {
+      link.scrollIntoView({ block: 'center' });
+    }
+  }
+  function setActive(id) {
+    if (id === activeId) return;
+    if (activeId && linkMap[activeId]) linkMap[activeId].classList.remove('active');
+    activeId = id;
+    var link = linkMap[id];
+    if (!link) return;
+    link.classList.add('active');
+    var g = link.closest('.nav-group');
+    if (g) g.classList.remove('collapsed');
+    ensureVisible(link);
+  }
+
+  var ticking = false;
+  function onScroll() {
+    if (ticking) return;
+    ticking = true;
+    window.requestAnimationFrame(function () {
+      ticking = false;
+      var y = window.scrollY || window.pageYOffset;
+      var h = document.documentElement.scrollHeight - window.innerHeight;
+
+      if (progress) progress.style.width = (h > 0 ? Math.min(100, (y / h) * 100) : 0) + '%';
+      if (backtop) backtop.classList.toggle('show', y > 700);
+
+      var offset = 90;
+      var current = headings.length ? headings[0].id : null;
+      for (var i = 0; i < headings.length; i++) {
+        if (headings[i].getBoundingClientRect().top <= offset) current = headings[i].id;
+        else break;
+      }
+      if (current) setActive(current);
+    });
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll);
+  onScroll();
+
+  if (backtop) backtop.addEventListener('click', function () {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  /* ---------- 目录点击（移动端自动收起） ---------- */
+  Array.prototype.slice.call(document.querySelectorAll('.nav a.nav-link')).forEach(function (a) {
+    a.addEventListener('click', function () {
+      if (window.innerWidth <= 1080) closeDrawer();
+    });
+  });
+
+  /* ---------- 代码块复制 ---------- */
+  Array.prototype.slice.call(document.querySelectorAll('.doc pre')).forEach(function (pre) {
+    var btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.type = 'button';
+    btn.textContent = '复制';
+    btn.addEventListener('click', function () {
+      var code = pre.querySelector('code');
+      var text = code ? code.innerText : pre.innerText;
+      var done = function () {
+        btn.textContent = '已复制';
+        btn.classList.add('done');
+        setTimeout(function () { btn.textContent = '复制'; btn.classList.remove('done'); }, 1400);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function () { fallback(text, done); });
+      } else { fallback(text, done); }
+    });
+    pre.appendChild(btn);
+  });
+  function fallback(text, done) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+})();
+
+</script>
+</body>
+</html>

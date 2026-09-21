@@ -1,0 +1,1383 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>芯片设计全流程笔记：从 RTL 到 GDSII</title>
+<meta name="description" content="芯片设计全流程笔记：从 RTL 到 GDSII">
+<script>(function(){try{var t=localStorage.getItem("prdoc-theme");if(!t){t=(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light";}document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
+<link rel="stylesheet" href="assets/katex.min.css">
+<style>
+/* ================= 设计变量 ================= */
+:root{
+  --topbar-h:56px;
+  --sidebar-w:312px;
+  --content-max:940px;
+
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei","PingFang SC","Hiragino Sans GB","Noto Sans CJK SC","Source Han Sans SC",sans-serif;
+  --font-mono:"JetBrains Mono","Cascadia Mono","Cascadia Code",Consolas,"Sarasa Mono SC","Noto Sans Mono CJK SC","DejaVu Sans Mono",monospace;
+
+  --c-bg:#ffffff;
+  --c-bg-soft:#f6f8fa;
+  --c-bg-side:#fbfcfd;
+  --c-bg-code:#f6f8fa;
+  --c-border:#e5e9ef;
+  --c-border-soft:#eef1f6;
+  --c-text:#1f2328;
+  --c-text-soft:#5a626c;
+  --c-text-faint:#8b939d;
+  --c-accent:#2563eb;
+  --c-accent-soft:#e9f0fe;
+  --c-accent-line:#bcd3f7;
+  --c-quote-bg:#f7f9fc;
+  --c-hero-grad:linear-gradient(135deg,#f2f6ff 0%,#fbfcff 55%,#f7f9fc 100%);
+
+  --shadow-sm:0 1px 2px rgba(16,24,40,.05);
+  --shadow-md:0 6px 24px rgba(16,24,40,.10);
+  --radius:10px;
+}
+html[data-theme="dark"]{
+  --c-bg:#0f1216;
+  --c-bg-soft:#151a20;
+  --c-bg-side:#12161b;
+  --c-bg-code:#151a20;
+  --c-border:#262c34;
+  --c-border-soft:#1e242b;
+  --c-text:#e3e7ec;
+  --c-text-soft:#a3acb8;
+  --c-text-faint:#78828f;
+  --c-accent:#7aa8ff;
+  --c-accent-soft:#16243a;
+  --c-accent-line:#2c4470;
+  --c-quote-bg:#141a21;
+  --c-hero-grad:linear-gradient(135deg,#141b26 0%,#0f1216 60%,#12161b 100%);
+  --shadow-md:0 6px 24px rgba(0,0,0,.45);
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--c-bg);color:var(--c-text);
+  font-family:var(--font-sans);font-size:15.5px;line-height:1.78;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+}
+::selection{background:var(--c-accent-soft)}
+
+/* 滚动条 */
+*::-webkit-scrollbar{width:9px;height:9px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:var(--c-border);border-radius:6px}
+*::-webkit-scrollbar-thumb:hover{background:var(--c-text-faint)}
+
+/* ================= 顶栏 ================= */
+.progress{position:fixed;top:0;left:0;height:2px;width:0;background:var(--c-accent);z-index:60;transition:width .1s linear}
+.topbar{
+  position:sticky;top:0;z-index:40;height:var(--topbar-h);
+  display:flex;align-items:center;gap:12px;padding:0 16px;
+  background:var(--c-bg);border-bottom:1px solid var(--c-border);
+}
+.topbar .brand{
+  flex:1;min-width:0;display:flex;align-items:center;gap:9px;
+  font-weight:650;font-size:14.5px;color:var(--c-text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.topbar .brand .logo{
+  width:24px;height:24px;flex:none;border-radius:7px;
+  background:linear-gradient(135deg,var(--c-accent),#7c3aed);
+  color:#fff;font-size:12px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+}
+.icon-btn{
+  width:34px;height:34px;flex:none;display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--c-border);background:var(--c-bg);
+  color:var(--c-text-soft);border-radius:8px;cursor:pointer;font-size:15px;
+  transition:.15s;
+}
+.icon-btn:hover{background:var(--c-bg-soft);color:var(--c-text);border-color:var(--c-text-faint)}
+#menuBtn{display:none}
+
+/* ================= 布局 ================= */
+.shell{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);align-items:start}
+.mask{display:none;position:fixed;inset:0;background:rgba(15,18,22,.45);z-index:34;backdrop-filter:blur(1px)}
+.mask.show{display:block}
+
+/* ================= 侧边目录 ================= */
+.sidebar{
+  position:sticky;top:var(--topbar-h);
+  height:calc(100vh - var(--topbar-h));
+  overflow-y:auto;overscroll-behavior:contain;
+  background:var(--c-bg-side);border-right:1px solid var(--c-border);
+  padding:14px 10px 64px;
+}
+.nav-tools{display:flex;gap:6px;margin:0 6px 10px}
+.search{flex:1;position:relative}
+.search input{
+  width:100%;padding:7px 10px 7px 28px;font-size:13px;font-family:inherit;
+  color:var(--c-text);background:var(--c-bg);
+  border:1px solid var(--c-border);border-radius:8px;outline:none;transition:.15s;
+}
+.search input:focus{border-color:var(--c-accent);box-shadow:0 0 0 3px var(--c-accent-soft)}
+.search input::placeholder{color:var(--c-text-faint)}
+.search::before{
+  content:"⌕";position:absolute;left:9px;top:50%;transform:translateY(-52%);
+  color:var(--c-text-faint);font-size:15px;pointer-events:none;
+}
+.mini-btn{
+  flex:none;padding:0 9px;font-size:12px;font-family:inherit;
+  border:1px solid var(--c-border);background:var(--c-bg);color:var(--c-text-soft);
+  border-radius:8px;cursor:pointer;transition:.15s;white-space:nowrap;
+}
+.mini-btn:hover{background:var(--c-bg-soft);color:var(--c-text);border-color:var(--c-text-faint)}
+
+.nav-group{margin:1px 0}
+.nav-row{display:flex;align-items:center}
+.nav-group .nav-children{overflow:hidden}
+.nav-group.collapsed .nav-children{display:none}
+.nav-group.collapsed .chev{transform:rotate(-90deg)}
+
+.chev{
+  width:20px;height:20px;flex:none;margin-left:2px;padding:0;
+  display:flex;align-items:center;justify-content:center;
+  border:none;background:none;color:var(--c-text-faint);cursor:pointer;
+  font-size:10px;border-radius:5px;transition:transform .15s,background .15s;
+}
+.chev:hover{background:var(--c-bg-soft);color:var(--c-text)}
+
+.nav-link{
+  display:block;flex:1;min-width:0;padding:5px 9px;border-radius:7px;
+  color:var(--c-text-soft);text-decoration:none;font-size:13.5px;line-height:1.5;
+  border-left:2px solid transparent;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.nav-link:hover{background:var(--c-bg-soft);color:var(--c-text)}
+.nav-link.lv1{font-size:13px;font-weight:650;color:var(--c-text);margin:4px 0 6px;background:var(--c-bg-soft)}
+.nav-link.lv2{font-weight:650;color:var(--c-text);font-size:14px;padding:6px 9px}
+.nav-link.lv3{padding-left:22px;font-size:13px}
+.nav-link.lv4{padding-left:36px;font-size:12.5px;color:var(--c-text-faint);padding-top:4px;padding-bottom:4px}
+.nav-link.active{background:var(--c-accent-soft);color:var(--c-accent);font-weight:650;border-left-color:var(--c-accent)}
+.nav-link.hidden{display:none}
+.nav-group.hidden{display:none}
+.nav-empty{display:none;padding:10px 12px;font-size:12.5px;color:var(--c-text-faint)}
+
+/* ================= 正文 ================= */
+.doc{max-width:var(--content-max);margin:0 auto;padding:0 46px 160px;min-width:0}
+.doc-hero{
+  margin:0 -46px 30px;padding:46px 46px 34px;
+  background:var(--c-hero-grad);border-bottom:1px solid var(--c-border);
+}
+.doc-hero h1{
+  margin:0;font-size:2.05rem;line-height:1.35;font-weight:750;letter-spacing:-.01em;
+}
+.doc-hero blockquote{
+  margin:16px 0 0;padding:0;background:none;border:none;
+  color:var(--c-text-soft);font-size:14px;line-height:1.85;
+}
+.doc-hero blockquote p{margin:.2em 0}
+.doc-hero blockquote strong{color:var(--c-text)}
+.doc-hero .h-anchor{display:none}
+
+.doc h1,.doc h2,.doc h3,.doc h4{
+  scroll-margin-top:calc(var(--topbar-h) + 16px);
+  position:relative;line-height:1.4;
+}
+.doc h2{
+  margin:3.1em 0 1em;padding-bottom:.42em;font-size:1.56rem;font-weight:700;
+  border-bottom:1px solid var(--c-border);letter-spacing:-.005em;
+}
+.doc h3{
+  margin:2.15em 0 .75em;padding-left:12px;font-size:1.2rem;font-weight:650;
+  border-left:4px solid var(--c-accent-line);
+}
+.doc h4{margin:1.75em 0 .6em;font-size:1.03rem;font-weight:650}
+
+.h-anchor{
+  margin-left:.5em;color:var(--c-text-faint);text-decoration:none;font-weight:400;
+  font-size:.85em;opacity:0;transition:opacity .15s,color .15s;
+}
+.doc h2:hover .h-anchor,.doc h3:hover .h-anchor,.doc h4:hover .h-anchor{opacity:.55}
+.h-anchor:hover{color:var(--c-accent);opacity:1}
+
+.doc p{margin:.95em 0}
+.doc a{color:var(--c-accent);text-decoration:none;border-bottom:1px solid var(--c-accent-line)}
+.doc a:hover{border-bottom-color:currentColor}
+.doc strong{font-weight:680;color:var(--c-text)}
+.doc em{font-style:italic}
+
+.doc ul,.doc ol{margin:.9em 0;padding-left:1.6em}
+.doc li{margin:.34em 0}
+.doc li>ul,.doc li>ol{margin:.3em 0}
+.doc ul{list-style:disc}
+.doc ul ul{list-style:circle}
+
+.doc hr{
+  height:1px;margin:2.8em 0;border:none;
+  background:linear-gradient(90deg,var(--c-border),var(--c-border-soft) 65%,transparent);
+}
+
+.doc blockquote{
+  margin:1.25em 0;padding:13px 18px;
+  background:var(--c-quote-bg);border-left:3px solid var(--c-accent-line);
+  border-radius:0 9px 9px 0;color:var(--c-text-soft);font-size:14.6px;
+}
+.doc blockquote p{margin:.45em 0}
+.doc blockquote p:first-child{margin-top:0}
+.doc blockquote p:last-child{margin-bottom:0}
+.doc blockquote strong{color:var(--c-text)}
+.doc blockquote code{background:var(--c-bg)}
+
+/* 表格 */
+.table-wrap{
+  display:block;width:100%;margin:1.35em 0;
+  overflow-x:auto;overflow-y:hidden;
+  border:1px solid var(--c-border);border-radius:var(--radius);background:var(--c-bg);
+}
+.doc table{width:100%;border-collapse:collapse;font-size:13.8px}
+.doc thead th{
+  background:var(--c-bg-soft);font-weight:680;text-align:left;
+  padding:10px 13px;border-bottom:1px solid var(--c-border);white-space:nowrap;
+}
+.doc td{padding:9px 13px;border-bottom:1px solid var(--c-border-soft);vertical-align:top;line-height:1.65}
+.doc tbody tr:last-child td{border-bottom:none}
+.doc tbody tr:hover{background:var(--c-bg-soft)}
+
+/* 代码 */
+.doc pre{
+  position:relative;margin:1.25em 0;padding:15px 17px;
+  background:var(--c-bg-code);border:1px solid var(--c-border);
+  border-radius:var(--radius);overflow-x:auto;
+}
+.doc pre code{
+  display:block;font-family:var(--font-mono);font-size:12.7px;line-height:1.62;
+  white-space:pre;color:var(--c-text);background:none;border:none;padding:0;
+}
+.doc :not(pre)>code{
+  font-family:var(--font-mono);font-size:.87em;
+  background:var(--c-bg-code);border:1px solid var(--c-border-soft);
+  padding:1.5px 5px;border-radius:6px;
+}
+.copy-btn{
+  position:absolute;top:8px;right:8px;padding:3px 9px;
+  font-size:11px;font-family:inherit;
+  background:var(--c-bg);color:var(--c-text-soft);
+  border:1px solid var(--c-border);border-radius:6px;cursor:pointer;
+  opacity:0;transition:opacity .15s,color .15s;
+}
+.doc pre:hover .copy-btn,.copy-btn.done{opacity:1}
+.copy-btn:hover{color:var(--c-text);border-color:var(--c-text-faint)}
+
+/* 公式 */
+eq{display:inline}
+eqn{display:block;margin:1.05em 0}
+.doc .katex{font-size:1.06em}
+.katex-display{
+  margin:0;padding:3px 2px;overflow-x:auto;overflow-y:hidden;
+}
+.katex-display>.katex{white-space:nowrap}
+.katex-display::-webkit-scrollbar{height:6px}
+
+/* 回顶 */
+.backtop{
+  position:fixed;right:22px;bottom:26px;width:40px;height:40px;
+  display:none;align-items:center;justify-content:center;font-size:16px;
+  background:var(--c-bg);color:var(--c-text-soft);
+  border:1px solid var(--c-border);border-radius:50%;
+  box-shadow:var(--shadow-md);cursor:pointer;z-index:30;transition:.15s;
+}
+.backtop.show{display:flex}
+.backtop:hover{color:var(--c-accent);border-color:var(--c-accent)}
+
+/* ================= 响应式 ================= */
+@media (max-width:1080px){
+  :root{--sidebar-w:292px}
+  #menuBtn{display:flex}
+  .shell{grid-template-columns:minmax(0,1fr)}
+  .sidebar{
+    position:fixed;left:0;top:calc(var(--topbar-h) + 36px);z-index:35;
+    width:var(--sidebar-w);height:calc(100vh - var(--topbar-h) - 36px);
+    transform:translateX(-102%);transition:transform .22s ease;
+    box-shadow:var(--shadow-md);
+  }
+  .sidebar.open{transform:none}
+  .sitenav{padding:0 14px;font-size:12.3px}
+  .doc{padding:0 22px 120px}
+  .doc-hero{margin:0 -22px 26px;padding:34px 22px 26px}
+  .doc-hero h1{font-size:1.6rem}
+  .doc h2{font-size:1.35rem}
+  .doc h3{font-size:1.12rem}
+}
+@media print{
+  .topbar,.sidebar,.backtop,.progress,.copy-btn,.mask,.sitenav{display:none!important}
+  .shell{display:block}
+  .doc{max-width:none;padding:0}
+  .doc-hero{margin:0 0 20px;padding:0 0 16px;background:none}
+  .doc h2{page-break-before:always;break-before:page}
+  .doc h2:first-of-type{page-break-before:auto;break-before:auto}
+  .doc a{color:#000;text-decoration:underline;border:none}
+  .doc pre{white-space:pre-wrap;word-break:break-word;border:1px solid #ccc}
+  .table-wrap{overflow:visible}
+  .doc table{font-size:11px}
+}
+
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<header class="topbar">
+<button class="icon-btn" id="menuBtn" type="button" aria-label="打开目录">☰</button>
+<div class="brand"><span class="logo">P&amp;R</span><span>芯片设计全流程笔记：从 RTL 到 GDSII</span></div>
+<button class="icon-btn" id="themeBtn" type="button" aria-label="切换主题">☾</button>
+</header>
+<nav class="sitenav"><a href="index.html">首页</a><i>·</i><a href="classic-methods.html">经典方法</a><i>·</i><a href="pnr-survey.html">文献综述</a><i>·</i><span class="sitenav-cur">全流程笔记</span></nav>
+<div class="shell">
+<aside class="sidebar" id="sidebar">
+<div class="nav-tools">
+<div class="search"><input id="navSearch" type="search" placeholder="搜索目录…" autocomplete="off"></div>
+<button class="mini-btn" id="expandAll" type="button">展开</button>
+<button class="mini-btn" id="collapseAll" type="button">折叠</button>
+</div>
+<nav class="nav">
+<a class="nav-link lv1" href="#top">📄 芯片设计全流程笔记：从 RTL 到 GDSII</a>
+<div class="nav-group plain"><a class="nav-link lv2" href="#sec">目录</a></div>
+<div class="nav-group"><div class="nav-row"><a class="nav-link lv2" href="#sec-0">0. 全局定位：芯片产业链四大环节</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children">
+<a class="nav-link lv3" href="#sec-2">全流程一张图</a>
+<a class="nav-link lv3" href="#sec-3">产业链模式</a>
+</div></div>
+<div class="nav-group collapsed"><div class="nav-row"><a class="nav-link lv2" href="#sec-1">1. 一个关键前提：芯片 = 数字 + 模拟 + 存储宏</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children">
+<a class="nav-link lv3" href="#sec-1-1">1.1 芯片"种类"与"产品"的区别</a>
+<a class="nav-link lv3" href="#sec-1-2">1.2 各种芯片的数字/模拟配比</a>
+<a class="nav-link lv3" href="#sec-1-3">1.3 关键：哪些走"我们学的全流程"？</a>
+<a class="nav-link lv3" href="#sec-1-4">1.4 典型产品拆解：DRAM / LPDDR（以长鑫存储为例）</a>
+<a class="nav-link lv4" href="#rtl-p-r">各产品与 RTL→P&amp;R 流程的关系</a>
+</div></div>
+<div class="nav-group plain"><a class="nav-link lv2" href="#sec-2-2">2. 设计流程主干</a></div>
+<div class="nav-group collapsed"><div class="nav-row"><a class="nav-link lv2" href="#sec-3-2">3. 前端设计：想法 → 逻辑网表</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children">
+<a class="nav-link lv3" href="#rtl">① RTL 设计</a>
+<a class="nav-link lv3" href="#sec-4">② 功能验证</a>
+<a class="nav-link lv3" href="#synthesis">③ 逻辑综合（Synthesis）</a>
+<a class="nav-link lv3" href="#gate-level-netlist">门级网表（Gate-level Netlist）</a>
+</div></div>
+<div class="nav-group collapsed"><div class="nav-row"><a class="nav-link lv2" href="#sec-4-2">4. 后端设计：网表 → 物理版图</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children">
+<a class="nav-link lv3" href="#floorplanning">④ 布局规划（Floorplanning）—— 打地基</a>
+<a class="nav-link lv3" href="#placement">⑤ 布局（Placement）—— 给标准单元找位置</a>
+<a class="nav-link lv3" href="#cts">⑥ 时钟树综合（CTS）</a>
+<a class="nav-link lv3" href="#routing">⑦ 布线（Routing）—— 把线真正连起来</a>
+<a class="nav-link lv3" href="#signoff">⑧ 签核（Signoff）—— 全面体检</a>
+</div></div>
+<div class="nav-group collapsed"><div class="nav-row"><a class="nav-link lv2" href="#sec-5">5. 深入一：布局 Placement</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children">
+<a class="nav-link lv3" href="#sec-5-1">5.1 概念</a>
+<a class="nav-link lv3" href="#sec-5-2">5.2 摆放对象</a>
+<a class="nav-link lv3" href="#sec-5-3">5.3 优化目标（互相冲突）</a>
+<a class="nav-link lv3" href="#sec-5-4">5.4 两步走</a>
+<a class="nav-link lv3" href="#sec-5-5">5.5 难点</a>
+<a class="nav-link lv3" href="#sec-5-6">5.6 经典算法（待深入）</a>
+</div></div>
+<div class="nav-group collapsed"><div class="nav-row"><a class="nav-link lv2" href="#sec-6">6. 深入二：布线 Routing</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children">
+<a class="nav-link lv3" href="#sec-6-1">6.1 概念</a>
+<a class="nav-link lv3" href="#sec-6-2">6.2 物理背景：金属层</a>
+<a class="nav-link lv3" href="#sec-6-3">6.3 三步走</a>
+<a class="nav-link lv3" href="#sec-6-4">6.4 硬约束</a>
+<a class="nav-link lv3" href="#sec-6-5">6.5 难点</a>
+<a class="nav-link lv3" href="#sec-6-6">6.6 经典算法（待深入）</a>
+</div></div>
+<div class="nav-group collapsed"><div class="nav-row"><a class="nav-link lv2" href="#sec-7">7. 贯穿始终的两条主线</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children">
+<a class="nav-link lv3" href="#timing">主线一：时序（Timing）</a>
+<a class="nav-link lv3" href="#iteration">主线二：迭代（Iteration）</a>
+</div></div>
+<div class="nav-group plain"><a class="nav-link lv2" href="#sec-8">8. 术语速查表</a></div>
+<div class="nav-group collapsed"><div class="nav-row"><a class="nav-link lv2" href="#sec-9">9. 后续待深入清单</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children">
+<a class="nav-link lv3" href="#sec-9-1">9.1 布局方向</a>
+<a class="nav-link lv3" href="#sec-9-2">9.2 布线方向</a>
+<a class="nav-link lv3" href="#sec-9-3">9.3 其他设计环节</a>
+<a class="nav-link lv3" href="#sec-9-4">9.4 工具与前沿</a>
+</div></div>
+<div class="nav-group plain"><a class="nav-link lv2" href="#sec-10">附：配套文档</a></div>
+
+<div class="nav-empty" id="navEmpty">没有匹配的条目</div>
+</nav>
+</aside>
+<div class="mask" id="mask"></div>
+<main class="doc" id="doc">
+<header class="doc-hero"><h1 id="top">芯片设计全流程笔记：从 RTL 到 GDSII<a class="h-anchor" href="#top" aria-label="本节链接">#</a></h1>
+<blockquote>
+<p>本文档整理芯片设计的宏观流程与整体认知框架，作为「布局布线深入学习的预备知识」。
+后续将以本文件为地图，逐块深入 P&amp;R（Placement &amp; Routing）。</p>
+</blockquote></header>
+<h2 id="sec">目录<a class="h-anchor" href="#sec" aria-label="本节链接">#</a></h2>
+<ul>
+<li><a href="#0-%E5%85%A8%E5%B1%80%E5%AE%9A%E4%BD%8D%E8%8A%AF%E7%89%87%E4%BA%A7%E4%B8%9A%E9%93%BE%E5%9B%9B%E5%A4%A7%E7%8E%AF%E8%8A%82">0. 全局定位：芯片产业链四大环节</a></li>
+<li><a href="#1-%E4%B8%80%E4%B8%AA%E5%85%B3%E9%94%AE%E5%89%8D%E6%8F%90%E8%8A%AF%E7%89%87--%E6%95%B0%E5%AD%97--%E6%A8%A1%E6%8B%9F--%E5%AD%98%E5%82%A8%E5%AE%8F">1. 一个关键前提：芯片 = 数字 + 模拟 + 存储宏</a></li>
+<li><a href="#2-%E8%AE%BE%E8%AE%A1%E6%B5%81%E7%A8%8B%E4%B8%BB%E5%B9%B2">2. 设计流程主干</a></li>
+<li><a href="#3-%E5%89%8D%E7%AB%AF%E8%AE%BE%E8%AE%A1%E6%83%B3%E6%B3%95--%E9%80%BB%E8%BE%91%E7%BD%91%E8%A1%A8">3. 前端设计：想法 → 逻辑网表</a></li>
+<li><a href="#4-%E5%90%8E%E7%AB%AF%E8%AE%BE%E8%AE%A1%E7%BD%91%E8%A1%A8--%E7%89%A9%E7%90%86%E7%89%88%E5%9B%BE">4. 后端设计：网表 → 物理版图</a></li>
+<li><a href="#5-%E6%B7%B1%E5%85%A5%E4%B8%80%E5%B8%83%E5%B1%80-placement">5. 深入一：布局 Placement</a></li>
+<li><a href="#6-%E6%B7%B1%E5%85%A5%E4%BA%8C%E5%B8%83%E7%BA%BF-routing">6. 深入二：布线 Routing</a></li>
+<li><a href="#7-%E8%B4%AF%E7%A9%BF%E5%A7%8B%E7%BB%88%E7%9A%84%E4%B8%A4%E6%9D%A1%E4%B8%BB%E7%BA%BF">7. 贯穿始终的两条主线</a></li>
+<li><a href="#8-%E6%9C%AF%E8%AF%AD%E9%80%9F%E6%9F%A5%E8%A1%A8">8. 术语速查表</a></li>
+<li><a href="#9-%E5%90%8E%E7%BB%AD%E5%BE%85%E6%B7%B1%E5%85%A5%E6%B8%85%E5%8D%95">9. 后续待深入清单</a></li>
+</ul>
+<h2 id="sec-0">0. 全局定位：芯片产业链四大环节<a class="h-anchor" href="#sec-0" aria-label="本节链接">#</a></h2>
+<pre><code class="language-plain">① 设计（Design）      ← 本笔记主要内容
+② 制造（Manufacturing）  晶圆厂 Fab：光罩、光刻、蚀刻
+③ 封装（Packaging）      划片、装壳、连引脚
+④ 测试（Testing）        功能/性能筛选
+</code></pre>
+<h3 id="sec-2">全流程一张图<a class="h-anchor" href="#sec-2" aria-label="本节链接">#</a></h3>
+<pre><code class="language-plain">需求定义
+   ↓
+┌──────────────────── ① 设计（Design）────────────────────┐
+│                                                          │
+│  数字部分 ──→ RTL → 综合 → 布局 → 布线 ──┐               │
+│                                          ├──→ 合并版图    │
+│  模拟部分 ──→ 电路图 → 手工版图 ─────────┤    (GDSII)     │
+│                                          │               │
+│  存储宏   ──→ 手工设计阵列 ──────────────┘               │
+│                                                          │
+└──────────────────────────┬───────────────────────────────┘
+                           ↓  GDSII 版图
+┌──────────────────── ② 制造（Fab）───────────────────────┐
+│  光罩制作 → 光刻 → 蚀刻 → 掺杂 → 层层堆叠 → 晶圆         │
+└──────────────────────────┬───────────────────────────────┘
+                           ↓  晶圆（一堆裸片 Die）
+┌──────────────────── ③④ 封测（OSAT）────────────────────┐
+│  划片 → 装壳 → 打线/焊球 → 引脚 → 测试筛选               │
+└──────────────────────────┬───────────────────────────────┘
+                           ↓
+                      成品芯片
+</code></pre>
+<h3 id="sec-3">产业链模式<a class="h-anchor" href="#sec-3" aria-label="本节链接">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">模式</th>
+<th style="text-align:left">做什么</th>
+<th style="text-align:left">代表</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>IDM</strong>（垂直整合）</td>
+<td style="text-align:left">设计 + 制造 + 封测全包</td>
+<td style="text-align:left">Intel、三星</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Fabless</strong>（无厂设计）</td>
+<td style="text-align:left">只做设计 → 交出 GDSII</td>
+<td style="text-align:left">高通、英伟达、海思</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Foundry</strong>（晶圆代工）</td>
+<td style="text-align:left">只做制造</td>
+<td style="text-align:left">台积电、中芯国际</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>OSAT</strong>（封测代工）</td>
+<td style="text-align:left">只做封装测试</td>
+<td style="text-align:left">日月光、长电科技</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>关键交接</strong>：设计完成 → <strong>GDSII 版图</strong> → 交给晶圆厂制造。
+<strong>重要约束</strong>：设计必须遵守晶圆厂提供的 <strong>PDK（工艺设计套件）</strong> ，否则无法流片。</p>
+<h2 id="sec-1">1. 一个关键前提：芯片 = 数字 + 模拟 + 存储宏<a class="h-anchor" href="#sec-1" aria-label="本节链接">#</a></h2>
+<blockquote>
+<p>理解芯片设计前，先要明确： <strong>任何一颗芯片，都是「数字电路 + 模拟电路 + 存储/自定义宏」的组合，只是配比不同。</strong></p>
+</blockquote>
+<h3 id="sec-1-1">1.1 芯片&quot;种类&quot;与&quot;产品&quot;的区别<a class="h-anchor" href="#sec-1-1" aria-label="本节链接">#</a></h3>
+<p>这两个是<strong>不同维度</strong>，容易混淆：</p>
+<pre><code class="language-plain">维度一：电路类型   →  数字电路 / 模拟电路 / 混合信号
+维度二：芯片功能   →  CPU / GPU / 存储器 / 射频 / 电源芯片 ...
+</code></pre>
+<ul>
+<li><strong>芯片种类</strong>：技术分类（CPU、GPU、存储器……）</li>
+<li><strong>芯片产品</strong>：具体型号（Apple M4、NVIDIA H100、某厂 DRAM 颗粒……）</li>
+</ul>
+<blockquote>
+<p><strong>产品 = 某公司 + 某型号 + 某工艺节点 + 某套设计实现</strong></p>
+</blockquote>
+<h3 id="sec-1-2">1.2 各种芯片的数字/模拟配比<a class="h-anchor" href="#sec-1-2" aria-label="本节链接">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">芯片</th>
+<th style="text-align:left">主体电路</th>
+<th style="text-align:left">说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>CPU / GPU</strong></td>
+<td style="text-align:left">数字为主（~99%）</td>
+<td style="text-align:left">但<strong>必须含模拟</strong>：PLL、电源管理、高速接口 PHY</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>SRAM</strong>（缓存）</td>
+<td style="text-align:left">数字为主</td>
+<td style="text-align:left">6 管存 1 bit；阵列通常手工设计为宏单元</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>DRAM</strong>（内存）</td>
+<td style="text-align:left"><strong>模拟味重</strong></td>
+<td style="text-align:left">1 电容存 1 bit；电荷、灵敏放大器、刷新全是模拟问题</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Flash / NAND</strong></td>
+<td style="text-align:left"><strong>模拟味更重</strong></td>
+<td style="text-align:left">浮栅存电荷、阈值电压、多电平</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>ADC / DAC</strong></td>
+<td style="text-align:left">纯模拟</td>
+<td style="text-align:left"></td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>射频芯片</strong></td>
+<td style="text-align:left">纯模拟</td>
+<td style="text-align:left">收发机、LNA、混频器</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>电源芯片</strong></td>
+<td style="text-align:left">纯模拟</td>
+<td style="text-align:left">LDO、DC-DC</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>要点</strong>：</p>
+<ul>
+<li>几乎所有&quot;数字芯片&quot;里<strong>都藏着一小撮模拟电路</strong>（PLL、电源、接口）</li>
+<li>反之，模拟芯片也常配一点数字逻辑（校准、控制）</li>
+<li><strong>几乎不存在&quot;纯数字芯片&quot;</strong></li>
+</ul>
+<h3 id="sec-1-3">1.3 关键：哪些走&quot;我们学的全流程&quot;？<a class="h-anchor" href="#sec-1-3" aria-label="本节链接">#</a></h3>
+<pre><code class="language-plain">┌──────────────────────────────────────────────────────────┐
+│            RTL → 综合 → 网表 → 布局 → 布线 → GDSII          │
+│            ↑                                             │
+│      这是【数字电路】的全自动流程                            │
+│      前提：RTL 可描述 + 有标准单元库 + 逻辑等价即正确          │
+└──────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────┐
+│           模拟电路：另一套流程                              │
+│  电路图设计 → 手工版图（匹配/对称/屏蔽）→ 反复仿真 → GDSII   │
+│  没有 RTL、没有综合、没有自动 P&amp;R，靠经验 + SPICE 仿真         │
+└──────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────┐
+│           存储阵列：手工设计为【宏单元】                      │
+│  在数字 P&amp;R 的 Floorplan 阶段被作为&quot;大块头&quot;摆进去             │
+└──────────────────────────────────────────────────────────┘
+</code></pre>
+<p><strong>数字流程的三大前提（模拟都不满足）：</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">前提</th>
+<th style="text-align:left">数字</th>
+<th style="text-align:left">模拟</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">用 RTL 描述功能</td>
+<td style="text-align:left">✅</td>
+<td style="text-align:left">❌</td>
+</tr>
+<tr>
+<td style="text-align:left">有标准单元库</td>
+<td style="text-align:left">✅</td>
+<td style="text-align:left">❌（每个器件定制）</td>
+</tr>
+<tr>
+<td style="text-align:left">逻辑等价即正确</td>
+<td style="text-align:left">✅</td>
+<td style="text-align:left">❌（位置/尺寸影响性能）</td>
+</tr>
+</tbody>
+</table></div>
+<blockquote>
+<p><strong>结论：我们学的全流程（RTL→综合→P&amp;R→GDSII）是「数字电路」的专属流程。</strong>
+模拟部分走手工路线，存储阵列做成宏单元被&quot;摆&quot;进去，最后拼在一起。</p>
+</blockquote>
+<h3 id="sec-1-4">1.4 典型产品拆解：DRAM / LPDDR（以长鑫存储为例）<a class="h-anchor" href="#sec-1-4" aria-label="本节链接">#</a></h3>
+<blockquote>
+<p>以国产 DRAM 厂商长鑫存储（CXMT）的 <strong>LPDDR</strong> 产品为例，看一个「模拟/存储为主」的产品是如何与我们的知识框架对应的。</p>
+</blockquote>
+<p><strong>LPDDR 是什么</strong>：Low Power Double Data Rate SDRAM，面向移动设备（手机/平板）的低功耗 DRAM 内存。代际：LPDDR4 → 4X → 5 → 5X → 6。</p>
+<pre><code class="language-plain">LPDDR = Low Power + Double Data Rate + SDRAM
+       = 省电版 DDR 内存（给手机当&quot;运存&quot;）
+</code></pre>
+<p><strong>内部构成（关键）</strong> ：DRAM 芯片不只是&quot;存储阵列&quot;，它同时含数字与模拟电路。</p>
+<pre><code class="language-plain">┌───────────── LPDDR 芯片内部 ─────────────┐
+│  存储阵列（模拟味重）                      │
+│  ├─ 电容式 bitcell（存电荷 = 模拟量）      │
+│  └─ 灵敏放大器 / 电荷泵 / 参考电压          │
+│                                          │
+│  数字控制逻辑（★ 走我们的 RTL→P&amp;R 流程）    │
+│  ├─ 命令译码 / 时序控制                    │
+│  ├─ 刷新控制 / 模式寄存器                   │
+│  ├─ 地址缓冲 / 数据通路                    │
+│  └─ 测试与自校准（BIST 等）                 │
+│                                          │
+│  接口 PHY（模拟/混合）                     │
+│  └─ 高速驱动、接收、阻抗匹配、DLL           │
+└──────────────────────────────────────────┘
+</code></pre>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">指标</th>
+<th style="text-align:left">DRAM / LPDDR</th>
+<th style="text-align:left">CPU / GPU</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">数字电路占比</td>
+<td style="text-align:left"><strong>小</strong></td>
+<td style="text-align:left"><strong>大（~99%）</strong></td>
+</tr>
+<tr>
+<td style="text-align:left">需要 P&amp;R 吗</td>
+<td style="text-align:left">需要（但范围小）</td>
+<td style="text-align:left">核心环节</td>
+</tr>
+<tr>
+<td style="text-align:left">P&amp;R 难度</td>
+<td style="text-align:left">相对低（数字块小、规整）</td>
+<td style="text-align:left">极高（上亿门、复杂约束）</td>
+</tr>
+<tr>
+<td style="text-align:left">产品难点在</td>
+<td style="text-align:left">存储阵列 + 模拟</td>
+<td style="text-align:left">P&amp;R + 时序收敛</td>
+</tr>
+</tbody>
+</table></div>
+<blockquote>
+<p><strong>结论</strong>：DRAM / LPDDR 的<strong>数字部分确实也走我们的 RTL→综合→P&amp;R 流程</strong>，但因为占比小、瓶颈不在这，所以它不是研究 P&amp;R 的典型对象。不是&quot;不需要&quot;，而是&quot;够用就行&quot;。真正研究 P&amp;R 的战场是 CPU / GPU / SoC 这类数字密集型芯片。</p>
+</blockquote>
+<h4 id="rtl-p-r">各产品与 RTL→P&amp;R 流程的关系<a class="h-anchor" href="#rtl-p-r" aria-label="本节链接">#</a></h4>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">产品</th>
+<th style="text-align:left">走 RTL→P&amp;R 吗</th>
+<th style="text-align:left">P&amp;R 地位</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>CPU / GPU</strong></td>
+<td style="text-align:left">✅ 全面走</td>
+<td style="text-align:left"><strong>核心，最难</strong></td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>SoC（手机芯片）</strong></td>
+<td style="text-align:left">✅ 数字部分全面走</td>
+<td style="text-align:left"><strong>核心</strong></td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>SRAM 缓存</strong></td>
+<td style="text-align:left">✅ 周边逻辑走，阵列手工</td>
+<td style="text-align:left">中等</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>DRAM / LPDDR</strong></td>
+<td style="text-align:left">✅ 部分走（控制逻辑）</td>
+<td style="text-align:left">次要</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Flash / NAND</strong></td>
+<td style="text-align:left">✅ 部分走</td>
+<td style="text-align:left">次要</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>ADC / 射频 / 电源</strong></td>
+<td style="text-align:left">❌ 基本不走</td>
+<td style="text-align:left">无</td>
+</tr>
+</tbody>
+</table></div>
+<blockquote>
+<p><strong>一句话</strong>：产品 = 数字 + 模拟 + 存储宏的组合；数字占比小的产品（如 DRAM）也走我们的流程，但那不是它的主战场。我们学 P&amp;R，重点是数字密集型芯片。</p>
+</blockquote>
+<h2 id="sec-2-2">2. 设计流程主干<a class="h-anchor" href="#sec-2-2" aria-label="本节链接">#</a></h2>
+<pre><code class="language-plain">需求 / 规格
+   ↓
+① RTL 设计            写代码描述&quot;电路该做什么&quot;
+   ↓
+② 功能验证            证明代码逻辑没写错
+   ↓
+③ 逻辑综合            代码 → 门级网表
+   ↓
+④ 布局规划 Floorplan   划场地、摆大件（SRAM/IP/模拟宏）
+   ↓
+⑤ 布局 Placement       给标准单元找位置
+   ↓
+⑥ 时钟树综合 CTS       把时钟均匀、同时送到各地
+   ↓
+⑦ 布线 Routing         用金属线把该连的连起来
+   ↓
+⑧ 签核 Signoff         时序/功耗/DRC 全达标
+   ↓
+GDSII 版图 → 晶圆厂制造
+</code></pre>
+<p><strong>前半 / 后半</strong>：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">阶段</th>
+<th style="text-align:left">步骤</th>
+<th style="text-align:left">产出</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>前端 Front-end</strong></td>
+<td style="text-align:left">① RTL → ② 验证 → ③ 综合</td>
+<td style="text-align:left">门级网表</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>后端 Back-end</strong>（物理设计）</td>
+<td style="text-align:left">④ Floorplan → ⑤ Placement → ⑥ CTS → ⑦ Routing → ⑧ Signoff</td>
+<td style="text-align:left">GDSII 版图</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="sec-3-2">3. 前端设计：想法 → 逻辑网表<a class="h-anchor" href="#sec-3-2" aria-label="本节链接">#</a></h2>
+<h3 id="rtl">① RTL 设计<a class="h-anchor" href="#rtl" aria-label="本节链接">#</a></h3>
+<ul>
+<li><strong>RTL = Register Transfer Level（寄存器传输级）</strong></li>
+<li>用 Verilog / VHDL / SystemVerilog <strong>描述电路行为</strong>，不关心用几个门、怎么连</li>
+<li>分可综合、不可综合；可仿真验证</li>
+</ul>
+<pre><code class="language-verilog">always @(posedge clk) begin
+    if (en)
+        q &lt;= d + 1;   // 描述&quot;加法 + 时序&quot;这一行为
+end
+</code></pre>
+<blockquote>
+<p>类比：写软件的&quot;源代码&quot;，能跑、能验，但还没变成机器指令。</p>
+</blockquote>
+<h3 id="sec-4">② 功能验证<a class="h-anchor" href="#sec-4" aria-label="本节链接">#</a></h3>
+<ul>
+<li>跑仿真、写测试，确认逻辑正确</li>
+<li><strong>耗时往往超过写代码本身</strong></li>
+<li>（待深入：验证方法学、UVM 等）</li>
+</ul>
+<h3 id="synthesis">③ 逻辑综合（Synthesis）<a class="h-anchor" href="#synthesis" aria-label="本节链接">#</a></h3>
+<p>把 RTL 翻译 + 优化成真实逻辑门，做三件事：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">步骤</th>
+<th style="text-align:left">内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>翻译 Translation</strong></td>
+<td style="text-align:left"><code>d+1</code> → 一整套加法器逻辑门</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>优化 Optimization</strong></td>
+<td style="text-align:left">化简逻辑、合并同类项，用最少门实现</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>映射 Mapping</strong></td>
+<td style="text-align:left">映射到<strong>具体工艺库</strong>的真实单元（带真实延迟/面积/功耗）</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong>输入</strong>：RTL 代码 + 约束（时钟频率/面积/功耗）+ 工艺库</li>
+<li><strong>输出</strong>： <strong>门级网表 + 时序/面积/功耗初步估算</strong></li>
+<li><strong>工具</strong>：Synopsys Design Compiler、Cadence Genus</li>
+</ul>
+<blockquote>
+<p>类比：把 Python 源代码<strong>编译成机器码</strong>，顺便做编译器优化。</p>
+</blockquote>
+<h3 id="gate-level-netlist">门级网表（Gate-level Netlist）<a class="h-anchor" href="#gate-level-netlist" aria-label="本节链接">#</a></h3>
+<p>综合的产物，描述两件事：</p>
+<pre><code class="language-verilog">AND2X1  U1 (.A(a),  .B(b),    .Y(n1));
+DFF_X2  U2 (.D(n1), .CK(clk), .Q(q));
+INV_X1  U3 (.A(q),  .Y(out));
+</code></pre>
+<ol>
+<li><strong>用哪些零件（Instances）</strong> ：具体标准单元</li>
+<li><strong>零件怎么连（Nets）</strong> ：引脚间连线关系</li>
+</ol>
+<p><strong>关键点</strong>：</p>
+<ul>
+<li>只有&quot;门&quot;和&quot;线&quot;， <strong>没有行为</strong>了</li>
+<li>每个单元带真实物理参数 → 可做时序分析</li>
+<li>但<strong>还没有实际位置和尺寸</strong>，只是逻辑连接关系</li>
+</ul>
+<blockquote>
+<p>类比：一份 <strong>BOM 清单 + 接线图</strong>，告诉你用哪些芯片、怎么连，但还没画 PCB 版图。</p>
+</blockquote>
+<h2 id="sec-4-2">4. 后端设计：网表 → 物理版图<a class="h-anchor" href="#sec-4-2" aria-label="本节链接">#</a></h2>
+<h3 id="floorplanning">④ 布局规划（Floorplanning）—— 打地基<a class="h-anchor" href="#floorplanning" aria-label="本节链接">#</a></h3>
+<ul>
+<li>定芯片尺寸（Die 面积）</li>
+<li>预留<strong>电源网格</strong>、 <strong>时钟网络</strong></li>
+<li>摆放<strong>大块头</strong>：内存（SRAM）、IP 核、模拟模块（Macro）</li>
+<li>剩余空地留给标准单元</li>
+</ul>
+<blockquote>
+<p>类比：装修先定冰箱、沙发等大件位置，再摆小物件。</p>
+</blockquote>
+<h3 id="placement">⑤ 布局（Placement）—— 给标准单元找位置<a class="h-anchor" href="#placement" aria-label="本节链接">#</a></h3>
+<p>详见第 5 节。</p>
+<h3 id="cts">⑥ 时钟树综合（CTS）<a class="h-anchor" href="#cts" aria-label="本节链接">#</a></h3>
+<ul>
+<li>时钟要被<strong>同时</strong>送到所有触发器；走线延迟不同会导致到达时间不一致（ <strong>时钟偏斜 Skew</strong>）</li>
+<li>CTS 就是建一棵<strong>平衡的时钟分发树</strong>，把时钟均匀、同时送达</li>
+<li>（待深入）</li>
+</ul>
+<h3 id="routing">⑦ 布线（Routing）—— 把线真正连起来<a class="h-anchor" href="#routing" aria-label="本节链接">#</a></h3>
+<p>详见第 6 节。</p>
+<h3 id="signoff">⑧ 签核（Signoff）—— 全面体检<a class="h-anchor" href="#signoff" aria-label="本节链接">#</a></h3>
+<p>检查：时序、功耗、DRC（设计规则）、IR Drop、EM、串扰等。
+<strong>全部达标</strong>才算设计完成。</p>
+<h2 id="sec-5">5. 深入一：布局 Placement<a class="h-anchor" href="#sec-5" aria-label="本节链接">#</a></h2>
+<h3 id="sec-5-1">5.1 概念<a class="h-anchor" href="#sec-5-1" aria-label="本节链接">#</a></h3>
+<blockquote>
+<p><strong>布局 = 给芯片上每个标准单元找一个合法、不重叠、且&quot;连线短、时序好、不拥塞、面积小&quot;的位置。</strong></p>
+</blockquote>
+<h3 id="sec-5-2">5.2 摆放对象<a class="h-anchor" href="#sec-5-2" aria-label="本节链接">#</a></h3>
+<ul>
+<li><strong>标准单元（Standard Cell）</strong> ：综合出的与门/或门/触发器/缓冲器等</li>
+<li>特点： <strong>等高矩形积木</strong>，排成一行一行（Row），宽度不等</li>
+<li>本质：给每个积木分配一个行列位置</li>
+</ul>
+<pre><code class="language-plain">┌─────────────────────────────────┐
+│  [宏单元 SRAM]        [IP核]     │
+│                                 │
+│  ┌───────────────────────────┐  │
+│  │ ▭ ▭ ▭ ▭  ▭ ▭  ▭ ▭ ▭ ▭ ▭ │  ← 一行标准单元
+│  │ ▭ ▭  ▭ ▭ ▭ ▭ ▭  ▭ ▭ ▭ ▭ │  ← 一行标准单元
+│  │ ▭ ▭ ▭ ▭ ▭ ▭  ▭ ▭ ▭ ▭ ▭  │  ← 一行标准单元
+│  └───────────────────────────┘  │
+└─────────────────────────────────┘
+</code></pre>
+<h3 id="sec-5-3">5.3 优化目标（互相冲突）<a class="h-anchor" href="#sec-5-3" aria-label="本节链接">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">目标</th>
+<th style="text-align:left">通俗解释</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>线长最短</strong></td>
+<td style="text-align:left">有连线关系的零件尽量摆近（常用 HPWL 估算）</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>时序达标</strong></td>
+<td style="text-align:left">关键路径零件挨近，信号跑得快</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>避免拥塞</strong></td>
+<td style="text-align:left">别堆太挤，否则后面布线布不下</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>面积小</strong></td>
+<td style="text-align:left">面积直接决定成本</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>功耗低</strong></td>
+<td style="text-align:left">线短、开关少 → 省电</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>核心矛盾</strong>：</p>
+<ul>
+<li>摆密 → 线短但<strong>拥塞</strong></li>
+<li>摆散 → 通畅但<strong>线长、时序崩</strong></li>
+</ul>
+<h3 id="sec-5-4">5.4 两步走<a class="h-anchor" href="#sec-5-4" aria-label="本节链接">#</a></h3>
+<ol>
+<li><strong>全局布局（Global Placement）</strong> ：粗摆，确定大致位置， <strong>允许重叠</strong>，压线长、摊平热点</li>
+<li><strong>详细布局 + 合法化（Detailed Placement / Legalization）</strong> ：精修，消除重叠，对齐合法行与网格</li>
+</ol>
+<pre><code class="language-plain">粗摆（有重叠）          合法化后（整齐无重叠）
+▭▭▭▭▭ ▭▭              ▭ ▭ ▭ ▭ ▭ ▭ ▭
+ ▭▭▭▭▭▭▭       →      ▭ ▭ ▭ ▭ ▭ ▭ ▭
+  ▭▭▭▭▭▭              ▭ ▭ ▭ ▭ ▭ ▭ ▭
+</code></pre>
+<h3 id="sec-5-5">5.5 难点<a class="h-anchor" href="#sec-5-5" aria-label="本节链接">#</a></h3>
+<ul>
+<li>规模巨大（百万~千万单元，组合数天文）</li>
+<li>NP 难，多目标优化，只能逼近最优</li>
+<li><strong>必须替布线&quot;操心&quot;</strong> （预判可布线性），否则布线阶段直接崩</li>
+<li><strong>HPWL 只是直线距离近似，无法反映真实走线</strong>——这是&quot;布局布线分离&quot;的根本痛点</li>
+</ul>
+<h3 id="sec-5-6">5.6 经典算法（待深入）<a class="h-anchor" href="#sec-5-6" aria-label="本节链接">#</a></h3>
+<ul>
+<li>二次规划 + 解析法（ePlace、RePlAce、DREAMPlace/GPU 加速）</li>
+<li>模拟退火（TimberWolf）、力导向、分区法</li>
+</ul>
+<h2 id="sec-6">6. 深入二：布线 Routing<a class="h-anchor" href="#sec-6" aria-label="本节链接">#</a></h2>
+<h3 id="sec-6-1">6.1 概念<a class="h-anchor" href="#sec-6-1" aria-label="本节链接">#</a></h3>
+<blockquote>
+<p><strong>布线 = 照网表，用多层金属把引脚连起来，且要连得下、连得对、不违规。</strong></p>
+</blockquote>
+<h3 id="sec-6-2">6.2 物理背景：金属层<a class="h-anchor" href="#sec-6-2" aria-label="本节链接">#</a></h3>
+<pre><code class="language-plain">M8 ──────────────────   高层：线宽大、电阻小 → 关键信号
+M7    (垂直走线)
+M6 ──────────────────
+M5    (垂直走线)
+M4 ──────────────────
+M3    (水平走线)
+M2   ▭ ▭ ▭  ← 标准单元引脚
+M1
+</code></pre>
+<ul>
+<li><strong>相邻层方向相反</strong>（横一层、竖一层），用<strong>过孔（Via）</strong> 换层</li>
+<li>每条线只能走在固定<strong>轨道（Track）</strong> 上</li>
+</ul>
+<blockquote>
+<p>类比：城市交通，有高架、有地面道路；竖路和横路交叉要上下桥（过孔）换道。</p>
+</blockquote>
+<h3 id="sec-6-3">6.3 三步走<a class="h-anchor" href="#sec-6-3" aria-label="本节链接">#</a></h3>
+<ol>
+<li><strong>全局布线（Global Routing）</strong> ：切成 G-cell 网格，定每条线走哪些格子/哪层，不指定具体轨道</li>
+<li><strong>轨道分配（Track Assignment）</strong> ：把大致路径落到具体轨道</li>
+<li><strong>详细布线（Detailed Routing）</strong> ：确定每条线、每个过孔的确切位置，满足所有制造规则</li>
+</ol>
+<h3 id="sec-6-4">6.4 硬约束<a class="h-anchor" href="#sec-6-4" aria-label="本节链接">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">约束</th>
+<th style="text-align:left">通俗解释</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>设计规则 DRC</strong></td>
+<td style="text-align:left">最小线宽/间距/面积，违反=废片</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>容量</strong></td>
+<td style="text-align:left">通道线数有限，超了 → 拥塞</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>时序</strong></td>
+<td style="text-align:left">关键路径走宽线、走捷径</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>串扰</strong></td>
+<td style="text-align:left">线挨太近会互相干扰</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>天线/EM 等</strong></td>
+<td style="text-align:left">先进工艺附加规则</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="sec-6-5">6.5 难点<a class="h-anchor" href="#sec-6-5" aria-label="本节链接">#</a></h3>
+<ul>
+<li><strong>拥塞（Congestion）</strong> ：最大敌人，常需回头改布局</li>
+<li>NP 难 + 规模爆炸（网格数可达 10⁹ 级）</li>
+<li>多约束（DRC/时序/串扰/功耗）同时满足</li>
+<li><strong>Rip-up and Reroute</strong>：拆线重布，现代布线器核心手段</li>
+</ul>
+<h3 id="sec-6-6">6.6 经典算法（待深入）<a class="h-anchor" href="#sec-6-6" aria-label="本节链接">#</a></h3>
+<ul>
+<li>迷宫算法（Lee / Maze，BFS 最短路）</li>
+<li>A* / 线搜索（Line Search）</li>
+<li>Rip-up and Reroute</li>
+<li>基于 ILP / SAT 的精确方法</li>
+<li>多商品流（Multi-commodity Flow）</li>
+</ul>
+<h2 id="sec-7">7. 贯穿始终的两条主线<a class="h-anchor" href="#sec-7" aria-label="本节链接">#</a></h2>
+<h3 id="timing">主线一：时序（Timing）<a class="h-anchor" href="#timing" aria-label="本节链接">#</a></h3>
+<p>芯片能跑多快 = 信号能否在一个时钟周期内到达。每个阶段都要看时序报告，不达标就回退改。</p>
+<h3 id="iteration">主线二：迭代（Iteration）<a class="h-anchor" href="#iteration" aria-label="本节链接">#</a></h3>
+<p>设计是&quot;不断打回重做&quot;的过程，不是流水线走一遍就完事。</p>
+<pre><code class="language-plain">   验证 ←──────┐
+      ↓        │
+   综合 ←───┐  │
+      ↓     │  │
+   布局 ←─┐│  │    ← 任何一步发现问题都可能回退
+      ↓  ││  │
+   布线 ←┘┘  │
+      ↓     │
+   签核 ────┘
+</code></pre>
+<h2 id="sec-8">8. 术语速查表<a class="h-anchor" href="#sec-8" aria-label="本节链接">#</a></h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">术语</th>
+<th style="text-align:left">全称 / 含义</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">RTL</td>
+<td style="text-align:left">Register Transfer Level，寄存器传输级</td>
+</tr>
+<tr>
+<td style="text-align:left">Netlist</td>
+<td style="text-align:left">网表：用哪些器件、如何连接</td>
+</tr>
+<tr>
+<td style="text-align:left">Synthesis</td>
+<td style="text-align:left">逻辑综合</td>
+</tr>
+<tr>
+<td style="text-align:left">Floorplan</td>
+<td style="text-align:left">布局规划</td>
+</tr>
+<tr>
+<td style="text-align:left">Placement</td>
+<td style="text-align:left">布局</td>
+</tr>
+<tr>
+<td style="text-align:left">CTS</td>
+<td style="text-align:left">Clock Tree Synthesis，时钟树综合</td>
+</tr>
+<tr>
+<td style="text-align:left">Routing</td>
+<td style="text-align:left">布线</td>
+</tr>
+<tr>
+<td style="text-align:left">Signoff</td>
+<td style="text-align:left">签核 / 最终检查</td>
+</tr>
+<tr>
+<td style="text-align:left">GDSII</td>
+<td style="text-align:left">最终版图数据格式，交晶圆厂</td>
+</tr>
+<tr>
+<td style="text-align:left">PDK</td>
+<td style="text-align:left">Process Design Kit，工艺设计套件</td>
+</tr>
+<tr>
+<td style="text-align:left">DRC</td>
+<td style="text-align:left">Design Rule Check，设计规则检查</td>
+</tr>
+<tr>
+<td style="text-align:left">HPWL</td>
+<td style="text-align:left">Half-Perimeter Wire Length，半周长线长（线长估算）</td>
+</tr>
+<tr>
+<td style="text-align:left">Via</td>
+<td style="text-align:left">过孔，金属层间连接</td>
+</tr>
+<tr>
+<td style="text-align:left">Track</td>
+<td style="text-align:left">走线轨道</td>
+</tr>
+<tr>
+<td style="text-align:left">Congestion</td>
+<td style="text-align:left">拥塞</td>
+</tr>
+<tr>
+<td style="text-align:left">Skew</td>
+<td style="text-align:left">时钟偏斜</td>
+</tr>
+<tr>
+<td style="text-align:left">IR Drop</td>
+<td style="text-align:left">电源压降</td>
+</tr>
+<tr>
+<td style="text-align:left">EM</td>
+<td style="text-align:left">Electromigration，电迁移</td>
+</tr>
+<tr>
+<td style="text-align:left">Macro</td>
+<td style="text-align:left">宏单元（SRAM/IP/模拟模块等预制大块）</td>
+</tr>
+<tr>
+<td style="text-align:left">PLL</td>
+<td style="text-align:left">Phase-Locked Loop，锁相环（典型的模拟电路）</td>
+</tr>
+<tr>
+<td style="text-align:left">IDM / Fabless / Foundry / OSAT</td>
+<td style="text-align:left">产业链四种模式</td>
+</tr>
+<tr>
+<td style="text-align:left">Slew</td>
+<td style="text-align:left">信号转换速率</td>
+</tr>
+<tr>
+<td style="text-align:left">TNS / WNS</td>
+<td style="text-align:left">Total/Worst Negative Slack，时序裕量指标</td>
+</tr>
+<tr>
+<td style="text-align:left">LPDDR</td>
+<td style="text-align:left">Low Power DDR SDRAM，移动设备用低功耗 DRAM 内存</td>
+</tr>
+<tr>
+<td style="text-align:left">DRAM</td>
+<td style="text-align:left">动态随机存储器：1 晶体管 + 1 电容存 1 bit，需不断刷新，模拟味重</td>
+</tr>
+<tr>
+<td style="text-align:left">P&amp;R / PnR</td>
+<td style="text-align:left">Placement and Routing，布局布线（后端物理设计核心环节的统称）</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="sec-9">9. 后续待深入清单<a class="h-anchor" href="#sec-9" aria-label="本节链接">#</a></h2>
+<h3 id="sec-9-1">9.1 布局方向<a class="h-anchor" href="#sec-9-1" aria-label="本节链接">#</a></h3>
+<ul>
+<li>[ ] 布局：全局布局算法（RePlAce / DREAMPlace 原理）</li>
+<li>[ ] 布局：合法化（Legalization）细节</li>
+<li>[ ] 布局：拥塞建模与预判</li>
+<li>[ ] 布局：可微分化布局（时序/可布线性做成可求导目标）</li>
+</ul>
+<h3 id="sec-9-2">9.2 布线方向<a class="h-anchor" href="#sec-9-2" aria-label="本节链接">#</a></h3>
+<ul>
+<li>[ ] 布线：全局布线算法与拥塞估计</li>
+<li>[ ] 布线：迷宫算法 / A* / Rip-up &amp; Reroute 实现</li>
+<li>[ ] 布线：DRC 约束与详细布线流程</li>
+<li>[ ] 布线：pin access 与先进节点特殊规则</li>
+</ul>
+<h3 id="sec-9-3">9.3 其他设计环节<a class="h-anchor" href="#sec-9-3" aria-label="本节链接">#</a></h3>
+<ul>
+<li>[ ] 时钟树综合 CTS 原理</li>
+<li>[ ] 时序分析（STA）基础</li>
+<li>[ ] 模拟版图设计（匹配、对称、共质心）</li>
+</ul>
+<h3 id="sec-9-4">9.4 工具与前沿<a class="h-anchor" href="#sec-9-4" aria-label="本节链接">#</a></h3>
+<ul>
+<li>[ ] 工具实操：OpenROAD / OpenLane（开源全流程）</li>
+<li>[ ] 主流商业工具：Synopsys ICC2 / Fusion Compiler、Cadence Innovus</li>
+<li>[ ] 前沿方向：P&amp;R 一体化协同（C3PO / RUPlace / Shift-Left）
+→ 详见配套文档《布局布线（P&amp;R）文献综述：分开做还是一体化？》</li>
+</ul>
+<h2 id="sec-10">附：配套文档<a class="h-anchor" href="#sec-10" aria-label="本节链接">#</a></h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">文档</th>
+<th style="text-align:left">内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">《传统布局布线（P&amp;R）经典方法综述：算法谱系与技术梳理》</td>
+<td style="text-align:left">六阶段 56 篇经典文献，含通俗理解 + 电路场景 + 算法详解</td>
+</tr>
+<tr>
+<td style="text-align:left">《布局布线（P&amp;R）文献综述：分开做还是一体化？（2024–2026）》</td>
+<td style="text-align:left">22 篇文献综述，分析 P&amp;R 是分离还是协同</td>
+</tr>
+<tr>
+<td style="text-align:left">《芯片设计全流程笔记：从 RTL 到 GDSII》（本文）</td>
+<td style="text-align:left">宏观流程 + 数字/模拟定位 + P&amp;R 基础</td>
+</tr>
+</tbody>
+</table></div>
+
+</main>
+</div>
+<button class="backtop" id="backtop" type="button" aria-label="回到顶部">↑</button>
+<script>
+(function () {
+  'use strict';
+
+  var root = document.documentElement;
+
+  /* ---------- 主题 ---------- */
+  var THEME_KEY = 'prdoc-theme';
+  function readTheme() {
+    try { return localStorage.getItem(THEME_KEY); } catch (e) { return null; }
+  }
+  function applyTheme(t) {
+    root.setAttribute('data-theme', t);
+    var btn = document.getElementById('themeBtn');
+    if (btn) {
+      btn.textContent = t === 'dark' ? '☀' : '☾';
+      btn.setAttribute('aria-label', t === 'dark' ? '切换到浅色主题' : '切换到深色主题');
+    }
+  }
+  var saved = readTheme();
+  var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme(saved || (prefersDark ? 'dark' : 'light'));
+  var themeBtn = document.getElementById('themeBtn');
+  if (themeBtn) {
+    themeBtn.addEventListener('click', function () {
+      var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+      try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+    });
+  }
+
+  /* ---------- 移动端抽屉 ---------- */
+  var sidebar = document.getElementById('sidebar');
+  var mask = document.getElementById('mask');
+  var menuBtn = document.getElementById('menuBtn');
+  function closeDrawer() {
+    if (sidebar) sidebar.classList.remove('open');
+    if (mask) mask.classList.remove('show');
+  }
+  if (menuBtn) {
+    menuBtn.addEventListener('click', function () {
+      var open = sidebar.classList.toggle('open');
+      if (mask) mask.classList.toggle('show', open);
+    });
+  }
+  if (mask) mask.addEventListener('click', closeDrawer);
+
+  /* ---------- 目录：折叠 ---------- */
+  var groups = Array.prototype.slice.call(document.querySelectorAll('.nav-group'));
+  groups.forEach(function (g) {
+    var chev = g.querySelector(':scope > .nav-row > .chev');
+    if (!chev) return;
+    chev.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      g.classList.toggle('collapsed');
+    });
+  });
+
+  var expandAll = document.getElementById('expandAll');
+  var collapseAll = document.getElementById('collapseAll');
+  if (expandAll) expandAll.addEventListener('click', function () {
+    groups.forEach(function (g) { g.classList.remove('collapsed'); });
+  });
+  if (collapseAll) collapseAll.addEventListener('click', function () {
+    groups.forEach(function (g) { g.classList.add('collapsed'); });
+  });
+
+  /* ---------- 目录：搜索过滤 ---------- */
+  var navSearch = document.getElementById('navSearch');
+  var navEmpty = document.getElementById('navEmpty');
+  function filterNav() {
+    var q = (navSearch.value || '').trim().toLowerCase();
+    var anyVisible = false;
+    groups.forEach(function (g) {
+      var links = Array.prototype.slice.call(g.querySelectorAll('.nav-link'));
+      var groupHit = false;
+      links.forEach(function (a) {
+        var hit = !q || a.textContent.toLowerCase().indexOf(q) !== -1;
+        a.classList.toggle('hidden', !hit);
+        if (hit) groupHit = true;
+      });
+      g.classList.toggle('hidden', !groupHit);
+      if (groupHit) {
+        anyVisible = true;
+        if (q) g.classList.remove('collapsed');
+      }
+    });
+    var topLinks = Array.prototype.slice.call(document.querySelectorAll('.nav > .nav-link'));
+    topLinks.forEach(function (a) {
+      var hit = !q || a.textContent.toLowerCase().indexOf(q) !== -1;
+      a.classList.toggle('hidden', !hit);
+      if (hit) anyVisible = true;
+    });
+    if (navEmpty) navEmpty.style.display = anyVisible ? 'none' : 'block';
+  }
+  if (navSearch) {
+    navSearch.addEventListener('input', filterNav);
+    navSearch.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { navSearch.value = ''; filterNav(); }
+    });
+  }
+
+  /* ---------- 滚动：进度条 / 回顶 / 高亮 ---------- */
+  var progress = document.getElementById('progress');
+  var backtop = document.getElementById('backtop');
+  var headings = Array.prototype.slice.call(document.querySelectorAll('.doc h1[id], .doc h2[id], .doc h3[id], .doc h4[id]'));
+  var linkMap = {};
+  Array.prototype.slice.call(document.querySelectorAll('.nav-link[href^="#"]')).forEach(function (a) {
+    linkMap[a.getAttribute('href').slice(1)] = a;
+  });
+
+  var activeId = null;
+  function ensureVisible(link) {
+    if (!sidebar || !link) return;
+    var lr = link.getBoundingClientRect();
+    var sr = sidebar.getBoundingClientRect();
+    if (lr.top < sr.top + 8 || lr.bottom > sr.bottom - 8) {
+      link.scrollIntoView({ block: 'center' });
+    }
+  }
+  function setActive(id) {
+    if (id === activeId) return;
+    if (activeId && linkMap[activeId]) linkMap[activeId].classList.remove('active');
+    activeId = id;
+    var link = linkMap[id];
+    if (!link) return;
+    link.classList.add('active');
+    var g = link.closest('.nav-group');
+    if (g) g.classList.remove('collapsed');
+    ensureVisible(link);
+  }
+
+  var ticking = false;
+  function onScroll() {
+    if (ticking) return;
+    ticking = true;
+    window.requestAnimationFrame(function () {
+      ticking = false;
+      var y = window.scrollY || window.pageYOffset;
+      var h = document.documentElement.scrollHeight - window.innerHeight;
+
+      if (progress) progress.style.width = (h > 0 ? Math.min(100, (y / h) * 100) : 0) + '%';
+      if (backtop) backtop.classList.toggle('show', y > 700);
+
+      var offset = 90;
+      var current = headings.length ? headings[0].id : null;
+      for (var i = 0; i < headings.length; i++) {
+        if (headings[i].getBoundingClientRect().top <= offset) current = headings[i].id;
+        else break;
+      }
+      if (current) setActive(current);
+    });
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll);
+  onScroll();
+
+  if (backtop) backtop.addEventListener('click', function () {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  /* ---------- 目录点击（移动端自动收起） ---------- */
+  Array.prototype.slice.call(document.querySelectorAll('.nav a.nav-link')).forEach(function (a) {
+    a.addEventListener('click', function () {
+      if (window.innerWidth <= 1080) closeDrawer();
+    });
+  });
+
+  /* ---------- 代码块复制 ---------- */
+  Array.prototype.slice.call(document.querySelectorAll('.doc pre')).forEach(function (pre) {
+    var btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.type = 'button';
+    btn.textContent = '复制';
+    btn.addEventListener('click', function () {
+      var code = pre.querySelector('code');
+      var text = code ? code.innerText : pre.innerText;
+      var done = function () {
+        btn.textContent = '已复制';
+        btn.classList.add('done');
+        setTimeout(function () { btn.textContent = '复制'; btn.classList.remove('done'); }, 1400);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function () { fallback(text, done); });
+      } else { fallback(text, done); }
+    });
+    pre.appendChild(btn);
+  });
+  function fallback(text, done) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+})();
+
+</script>
+</body>
+</html>
