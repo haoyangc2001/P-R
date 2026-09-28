@@ -292,13 +292,13 @@ eqn{display:block;margin:1.05em 0}
   #menuBtn{display:flex}
   .shell{grid-template-columns:minmax(0,1fr)}
   .sidebar{
-    position:fixed;left:0;top:calc(var(--topbar-h) + 36px);z-index:35;
-    width:var(--sidebar-w);height:calc(100vh - var(--topbar-h) - 36px);
+    position:fixed;left:0;top:calc(var(--topbar-h) + 32px);z-index:35;
+    width:var(--sidebar-w);height:calc(100vh - var(--topbar-h) - 32px);
     transform:translateX(-102%);transition:transform .22s ease;
     box-shadow:var(--shadow-md);
   }
   .sidebar.open{transform:none}
-  .sitenav{padding:0 14px;font-size:12.3px}
+  .sitenav{padding:0 12px;font-size:12px;height:32px}
   .doc{padding:0 22px 120px}
   .doc-hero{margin:0 -22px 26px;padding:34px 22px 26px}
   .doc-hero h1{font-size:1.6rem}
@@ -318,16 +318,50 @@ eqn{display:block;margin:1.05em 0}
   .doc table{font-size:11px}
 }
 
+/* ================= 跨页次级导航条（四个页面共用） ================= */
+.sitenav{
+  position:sticky;top:var(--topbar-h);z-index:39;
+  display:flex;align-items:center;flex-wrap:wrap;gap:2px;
+  padding:0 16px;height:36px;
+  background:var(--c-bg-side);border-bottom:1px solid var(--c-border);
+  font-size:12.6px;line-height:1;
+}
+.sitenav a,.sitenav .sitenav-cur{
+  display:inline-flex;align-items:center;height:24px;
+  padding:0 9px;border-radius:6px;
+  color:var(--c-text-soft);text-decoration:none;
+  white-space:nowrap;transition:background .15s,color .15s;
+}
+.sitenav a:hover{background:var(--c-bg-soft);color:var(--c-accent)}
+.sitenav .sitenav-cur{
+  background:var(--c-accent-soft);color:var(--c-accent);
+  font-weight:650;cursor:default;
+}
+.sitenav i{
+  color:var(--c-text-faint);font-style:normal;font-size:11px;
+  padding:0 1px;user-select:none;
+}
+/* 顶栏「返回首页」链接（子页面专用） */
+.home-btn{
+  flex:none;display:inline-flex;align-items:center;gap:5px;
+  height:34px;padding:0 11px;border-radius:8px;
+  font-size:13.4px;font-weight:600;text-decoration:none;white-space:nowrap;
+  background:var(--c-bg);color:var(--c-text-soft);
+  border:1px solid var(--c-border);transition:.15s;
+}
+.home-btn:hover{background:var(--c-accent-soft);color:var(--c-accent);border-color:var(--c-accent-line)}
+.home-btn .arw{font-size:14px;line-height:1;transform:translateY(-.5px)}
 </style>
 </head>
 <body>
 <div class="progress" id="progress"></div>
 <header class="topbar">
 <button class="icon-btn" id="menuBtn" type="button" aria-label="打开目录">☰</button>
+<a class="home-btn" href="index.html" title="返回首页"><span class="arw">←</span>首页</a>
 <div class="brand"><span class="logo">P&amp;R</span><span>布局布线（P&amp;R）文献综述：分开做还是一体化？</span></div>
 <button class="icon-btn" id="themeBtn" type="button" aria-label="切换主题">☾</button>
 </header>
-<nav class="sitenav"><a href="index.html">首页</a><i>·</i><a href="classic-methods.html">经典方法</a><i>·</i><span class="sitenav-cur">文献综述</span><i>·</i><a href="chip-design-flow.html">全流程笔记</a></nav>
+<nav class="sitenav"><a href="index.html">首页</a><i>·</i><a href="chip-design-flow.html">全流程笔记</a><i>·</i><span class="sitenav-cur">文献综述</span><i>·</i><a href="classic-methods.html">经典方法</a></nav>
 <div class="shell">
 <aside class="sidebar" id="sidebar">
 <div class="nav-tools">
