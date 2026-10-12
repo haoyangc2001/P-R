@@ -198,6 +198,7 @@ body{
 .h-anchor:hover{color:var(--c-accent);opacity:1}
 
 .doc p{margin:.95em 0}
+.doc img{max-width:100%;height:auto;display:block;margin:1.4em auto;border-radius:var(--radius);border:1px solid var(--c-border)}
 .doc a{color:var(--c-accent);text-decoration:none;border-bottom:1px solid var(--c-accent-line)}
 .doc a:hover{border-bottom-color:currentColor}
 .doc strong{font-weight:680;color:var(--c-text)}
@@ -454,7 +455,7 @@ eqn{display:block;margin:1.05em 0}
 <div class="brand"><span class="logo">P&amp;R</span><span>布局布线学习笔记</span></div>
 <button class="icon-btn" id="themeBtn" type="button" aria-label="切换主题">☾</button>
 </header>
-<nav class="sitenav"><span class="sitenav-cur">首页</span><i>·</i><a href="chip-design-flow.html">全流程笔记</a><i>·</i><a href="pnr-survey.html">文献综述</a><i>·</i><a href="classic-methods.html">经典方法</a></nav>
+<nav class="sitenav"><span class="sitenav-cur">首页</span><i>·</i><a href="chip-design-flow.html">全流程笔记</a><i>·</i><a href="pnr-survey.html">文献综述</a><i>·</i><a href="classic-methods.html">经典方法</a><i>·</i><a href="routing-recent.html">布线调研</a></nav>
 <main>
 <section class="home-hero">
 <h1>布局布线（P&amp;R）学习笔记</h1>
@@ -466,14 +467,16 @@ eqn{display:block;margin:1.05em 0}
 <a class="card" href="chip-design-flow.html"><span class="badge">笔记 · 宏观地图</span><h2>芯片设计全流程笔记：从 RTL 到 GDSII</h2><p>把芯片从 RTL 到 GDSII 的全过程串成一张地图，讲清数字 / 模拟 / 存储宏的分工定位，是深入 P&amp;R 之前的预备知识。</p><div class="stats"><span>前端 + 后端</span><span>9 个环节</span><span>数字/模拟定位</span><span>术语速查</span></div><span class="go">进入阅读</span></a>
 <a class="card" href="pnr-survey.html"><span class="badge">综述 · 前沿趋势</span><h2>布局布线（P&amp;R）文献综述：分开做还是一体化？</h2><p>22 篇 2024–2026 年文献，回答“布局与布线到底该分开做还是协同做”。含三条技术路线、四条关键判断，以及一份英文缩写速查表。</p><div class="stats"><span>22 篇文献</span><span>3 条路线</span><span>9 类术语表</span><span>2024–2026</span></div><span class="go">进入阅读</span></a>
 <a class="card" href="classic-methods.html"><span class="badge">综述 · 经典算法</span><h2>传统布局布线（P&amp;R）经典方法综述：算法谱系与技术梳理</h2><p>六阶段 56 篇经典文献，含通俗理解 + 电路场景 + 算法详解。从分区、布局规划一路讲到详细布线，是整套笔记的“算法家底”。</p><div class="stats"><span>6 个阶段</span><span>56 篇文献</span><span>152 段代码</span><span>84 张表格</span></div><span class="go">进入阅读</span></a>
+<a class="card" href="routing-recent.html"><span class="badge">专题 · 布线算法</span><h2>布线算法调研：从基本算法到现代路由器</h2><p>从 RSMT / FLUTE、Lee、PathFinder 等基本算法讲到 FastRoute、CUGR、TritonRoute，再到 2024–2026 年的 GPU 并行、层分配与深度学习布线工作。</p><div class="stats"><span>全局 + 详细布线</span><span>经典基础算法</span><span>2024–2026</span><span>文献表</span></div><span class="go">进入阅读</span></a>
 </div>
 <div class="link-row">
 <a href="src/chip-design-flow.md">📄 全流程笔记 · 原始 Markdown</a>
 <a href="src/pnr-survey.md">📄 文献综述 · 原始 Markdown</a>
 <a href="src/classic-methods.md">📄 经典方法 · 原始 Markdown</a>
+<a href="src/routing-recent.md">📄 布线调研 · 原始 Markdown</a>
 </div>
 <div class="foot-note">
-<strong>阅读路径：</strong>建议按卡片顺序读——<strong>① 全流程笔记</strong>建立芯片全局地图 → <strong>② 文献综述</strong>看清 P&amp;R 该不该协同做 → <strong>③ 经典方法</strong>深入六阶段算法家底。<br><strong>使用说明：</strong>三个页面顶部都有一条导航条，也可以点顶栏左侧的「← 首页」按钮随时回到本页。页面左侧是自动生成的目录树，支持关键词搜索；右上角可切换深色 / 浅色主题。所有公式由 KaTeX 渲染，可离线打开。原始 Markdown 源码放在 <code>src/</code> 目录下，方便后续修改与重新编译。
+<strong>阅读路径：</strong>建议按卡片顺序读——<strong>① 全流程笔记</strong>建立芯片全局地图 → <strong>② 文献综述</strong>看清 P&amp;R 该不该协同做 → <strong>③ 经典方法</strong>深入六阶段算法家底 → <strong>④ 布线调研</strong>把布线这条线一路看到现代路由器。<br><strong>使用说明：</strong>四个页面顶部都有一条导航条，也可以点顶栏左侧的「← 首页」按钮随时回到本页。页面左侧是自动生成的目录树，支持关键词搜索；右上角可切换深色 / 浅色主题。所有公式由 KaTeX 渲染，可离线打开。原始 Markdown 源码放在 <code>src/</code> 目录下，方便后续修改与重新编译。
 </div>
 </div>
 </main>

@@ -4,6 +4,8 @@
 
 ## 📖 在线文档
 
+🔗 **站点首页：<https://haoyangc2001.github.io/P-R/>**
+
 推荐按 **宏观 → 中观 → 微观** 的顺序阅读：
 
 | 序 | 文档 | 定位 | 内容简介 | 规模 |
@@ -11,10 +13,11 @@
 | ① | **[芯片设计全流程笔记：从 RTL 到 GDSII](./chip-design-flow.html)** | 宏观地图 | 把芯片从 RTL 到 GDSII 的全过程串成一张地图，讲清数字 / 模拟 / 存储宏的分工定位，是深入 P&R 之前的预备知识 | 前端 + 后端 / 9 个环节 |
 | ② | **[文献综述：分开做还是一体化？](./pnr-survey.html)** | 中观框架 | 22 篇 2024–2026 年文献，回答「布局与布线到底该分开做还是协同做」。含三条技术路线、四条关键判断，以及一份英文缩写速查表 | 22 篇 / 3 条路线 / 9 类术语 |
 | ③ | **[经典方法综述：算法谱系与技术梳理](./classic-methods.html)** | 微观算法 | 六阶段 56 篇经典文献，含通俗理解 + 电路场景 + 算法详解。从分区、布局规划一路讲到详细布线，是整套笔记的「算法家底」 | 6 阶段 / 56 篇 / 152 段代码 |
+| ④ | **[布线算法调研：从基本算法到现代路由器](./routing-recent.html)** | 布线专题 | 从 RSMT / FLUTE、Lee、PathFinder 等基本算法讲到 FastRoute、CUGR、TritonRoute，再到 2024–2026 年的 GPU 并行、层分配与深度学习布线工作 | 全局 + 详细 / 2024–2026 |
 
-> 阅读路径：**先知道芯片怎么造 → 再知道 P&R 在争论什么 → 最后钻进每个阶段的算法**。
+> 阅读路径：**先知道芯片怎么造 → 再知道 P&R 在争论什么 → 钻进每个阶段的算法 → 再顺着布线这条线看到现代路由器**。
 >
-> 三个页面顶部都有一条导航条，可以随时互相跳转；也可以点顶栏左侧的「← 首页」按钮回到 [index.html](./index.html)。
+> 四个页面顶部都有一条导航条，可以随时互相跳转；也可以点顶栏左侧的「← 首页」按钮回到 [index.html](./index.html)。
 
 ## 📂 目录结构
 
@@ -24,13 +27,17 @@
 ├─ chip-design-flow.html   # ① 全流程笔记（宏观地图）
 ├─ pnr-survey.html         # ② 文献综述（中观框架）
 ├─ classic-methods.html    # ③ 经典方法综述（微观算法）
+├─ routing-recent.html     # ④ 布线算法调研（布线专题）
 ├─ assets/
-│   ├─ katex.min.css       # KaTeX 样式（三个页面共用）
-│   └─ fonts/              # 60 个 KaTeX 字体文件
+│   ├─ katex.min.css       # KaTeX 样式（各页面共用）
+│   ├─ fonts/              # 60 个 KaTeX 字体文件
+│   ├─ rsmt-vs-terminal-tree.png   # 1.1.1 RSMT 示意图
+│   └─ flute-construction.png      # 1.1.3 FLUTE 流程示意图
 └─ src/                    # 原始 Markdown 源码
     ├─ classic-methods.md
     ├─ pnr-survey.md
-    └─ chip-design-flow.md
+    ├─ chip-design-flow.md
+    └─ routing-recent.md
 ```
 
 ## ✨ 页面功能
@@ -41,7 +48,7 @@
 - **响应式排版**：窄屏自动把侧栏收成抽屉，手机也能看
 - **代码块复制**：悬停出现「复制」按钮
 - **阅读辅助**：顶部进度条、回到顶部、标题锚点可直达链接
-- **跨页导航**：顶栏左侧「← 首页」按钮 + 页面顶部导航条，四个页面可随时互相跳转，当前页高亮
+- **跨页导航**：顶栏左侧「← 首页」按钮 + 页面顶部导航条，五个页面可随时互相跳转，当前页高亮
 - **打印友好**：每章自动另起一页
 
 ## 🛠 重新编译
@@ -55,6 +62,7 @@ npm install markdown-it markdown-it-texmath katex
 node build.js src/classic-methods.md .
 node build.js src/pnr-survey.md .
 node build.js src/chip-design-flow.md .
+node build.js src/routing-recent.md .
 ```
 
 ## 🌐 部署

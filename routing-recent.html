@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>布线算法调研</title>
+<meta name="description" content="布线算法调研">
+<script>(function(){try{var t=localStorage.getItem("prdoc-theme");if(!t){t=(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light";}document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
+<link rel="stylesheet" href="assets/katex.min.css">
+<style>
+/* ================= 设计变量 ================= */
+:root{
+  --topbar-h:56px;
+  --sidebar-w:312px;
+  --content-max:940px;
+
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei","PingFang SC","Hiragino Sans GB","Noto Sans CJK SC","Source Han Sans SC",sans-serif;
+  --font-mono:"JetBrains Mono","Cascadia Mono","Cascadia Code",Consolas,"Sarasa Mono SC","Noto Sans Mono CJK SC","DejaVu Sans Mono",monospace;
+
+  --c-bg:#ffffff;
+  --c-bg-soft:#f6f8fa;
+  --c-bg-side:#fbfcfd;
+  --c-bg-code:#f6f8fa;
+  --c-border:#e5e9ef;
+  --c-border-soft:#eef1f6;
+  --c-text:#1f2328;
+  --c-text-soft:#5a626c;
+  --c-text-faint:#8b939d;
+  --c-accent:#2563eb;
+  --c-accent-soft:#e9f0fe;
+  --c-accent-line:#bcd3f7;
+  --c-quote-bg:#f7f9fc;
+  --c-hero-grad:linear-gradient(135deg,#f2f6ff 0%,#fbfcff 55%,#f7f9fc 100%);
+
+  --shadow-sm:0 1px 2px rgba(16,24,40,.05);
+  --shadow-md:0 6px 24px rgba(16,24,40,.10);
+  --radius:10px;
+}
+html[data-theme="dark"]{
+  --c-bg:#0f1216;
+  --c-bg-soft:#151a20;
+  --c-bg-side:#12161b;
+  --c-bg-code:#151a20;
+  --c-border:#262c34;
+  --c-border-soft:#1e242b;
+  --c-text:#e3e7ec;
+  --c-text-soft:#a3acb8;
+  --c-text-faint:#78828f;
+  --c-accent:#7aa8ff;
+  --c-accent-soft:#16243a;
+  --c-accent-line:#2c4470;
+  --c-quote-bg:#141a21;
+  --c-hero-grad:linear-gradient(135deg,#141b26 0%,#0f1216 60%,#12161b 100%);
+  --shadow-md:0 6px 24px rgba(0,0,0,.45);
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--c-bg);color:var(--c-text);
+  font-family:var(--font-sans);font-size:15.5px;line-height:1.78;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+}
+::selection{background:var(--c-accent-soft)}
+
+/* 滚动条 */
+*::-webkit-scrollbar{width:9px;height:9px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:var(--c-border);border-radius:6px}
+*::-webkit-scrollbar-thumb:hover{background:var(--c-text-faint)}
+
+/* ================= 顶栏 ================= */
+.progress{position:fixed;top:0;left:0;height:2px;width:0;background:var(--c-accent);z-index:60;transition:width .1s linear}
+.topbar{
+  position:sticky;top:0;z-index:40;height:var(--topbar-h);
+  display:flex;align-items:center;gap:12px;padding:0 16px;
+  background:var(--c-bg);border-bottom:1px solid var(--c-border);
+}
+.topbar .brand{
+  flex:1;min-width:0;display:flex;align-items:center;gap:9px;
+  font-weight:650;font-size:14.5px;color:var(--c-text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.topbar .brand .logo{
+  width:24px;height:24px;flex:none;border-radius:7px;
+  background:linear-gradient(135deg,var(--c-accent),#7c3aed);
+  color:#fff;font-size:12px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+}
+.icon-btn{
+  width:34px;height:34px;flex:none;display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--c-border);background:var(--c-bg);
+  color:var(--c-text-soft);border-radius:8px;cursor:pointer;font-size:15px;
+  transition:.15s;
+}
+.icon-btn:hover{background:var(--c-bg-soft);color:var(--c-text);border-color:var(--c-text-faint)}
+#menuBtn{display:none}
+
+/* ================= 布局 ================= */
+.shell{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);align-items:start}
+.mask{display:none;position:fixed;inset:0;background:rgba(15,18,22,.45);z-index:34;backdrop-filter:blur(1px)}
+.mask.show{display:block}
+
+/* ================= 侧边目录 ================= */
+.sidebar{
+  position:sticky;top:var(--topbar-h);
+  height:calc(100vh - var(--topbar-h));
+  overflow-y:auto;overscroll-behavior:contain;
+  background:var(--c-bg-side);border-right:1px solid var(--c-border);
+  padding:14px 10px 64px;
+}
+.nav-tools{display:flex;gap:6px;margin:0 6px 10px}
+.search{flex:1;position:relative}
+.search input{
+  width:100%;padding:7px 10px 7px 28px;font-size:13px;font-family:inherit;
+  color:var(--c-text);background:var(--c-bg);
+  border:1px solid var(--c-border);border-radius:8px;outline:none;transition:.15s;
+}
+.search input:focus{border-color:var(--c-accent);box-shadow:0 0 0 3px var(--c-accent-soft)}
+.search input::placeholder{color:var(--c-text-faint)}
+.search::before{
+  content:"⌕";position:absolute;left:9px;top:50%;transform:translateY(-52%);
+  color:var(--c-text-faint);font-size:15px;pointer-events:none;
+}
+.mini-btn{
+  flex:none;padding:0 9px;font-size:12px;font-family:inherit;
+  border:1px solid var(--c-border);background:var(--c-bg);color:var(--c-text-soft);
+  border-radius:8px;cursor:pointer;transition:.15s;white-space:nowrap;
+}
+.mini-btn:hover{background:var(--c-bg-soft);color:var(--c-text);border-color:var(--c-text-faint)}
+
+.nav-group{margin:1px 0}
+.nav-row{display:flex;align-items:center}
+.nav-group .nav-children{overflow:hidden}
+.nav-group.collapsed .nav-children{display:none}
+.nav-group.collapsed .chev{transform:rotate(-90deg)}
+
+.chev{
+  width:20px;height:20px;flex:none;margin-left:2px;padding:0;
+  display:flex;align-items:center;justify-content:center;
+  border:none;background:none;color:var(--c-text-faint);cursor:pointer;
+  font-size:10px;border-radius:5px;transition:transform .15s,background .15s;
+}
+.chev:hover{background:var(--c-bg-soft);color:var(--c-text)}
+
+.nav-link{
+  display:block;flex:1;min-width:0;padding:5px 9px;border-radius:7px;
+  color:var(--c-text-soft);text-decoration:none;font-size:13.5px;line-height:1.5;
+  border-left:2px solid transparent;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.nav-link:hover{background:var(--c-bg-soft);color:var(--c-text)}
+.nav-link.lv1{font-size:13px;font-weight:650;color:var(--c-text);margin:4px 0 6px;background:var(--c-bg-soft)}
+.nav-link.lv2{font-weight:650;color:var(--c-text);font-size:14px;padding:6px 9px}
+.nav-link.lv3{padding-left:22px;font-size:13px}
+.nav-link.lv4{padding-left:36px;font-size:12.5px;color:var(--c-text-faint);padding-top:4px;padding-bottom:4px}
+.nav-link.active{background:var(--c-accent-soft);color:var(--c-accent);font-weight:650;border-left-color:var(--c-accent)}
+.nav-link.hidden{display:none}
+.nav-group.hidden{display:none}
+.nav-empty{display:none;padding:10px 12px;font-size:12.5px;color:var(--c-text-faint)}
+
+/* ================= 正文 ================= */
+.doc{max-width:var(--content-max);margin:0 auto;padding:0 46px 160px;min-width:0}
+.doc-hero{
+  margin:0 -46px 30px;padding:46px 46px 34px;
+  background:var(--c-hero-grad);border-bottom:1px solid var(--c-border);
+}
+.doc-hero h1{
+  margin:0;font-size:2.05rem;line-height:1.35;font-weight:750;letter-spacing:-.01em;
+}
+.doc-hero blockquote{
+  margin:16px 0 0;padding:0;background:none;border:none;
+  color:var(--c-text-soft);font-size:14px;line-height:1.85;
+}
+.doc-hero blockquote p{margin:.2em 0}
+.doc-hero blockquote strong{color:var(--c-text)}
+.doc-hero .h-anchor{display:none}
+
+.doc h1,.doc h2,.doc h3,.doc h4{
+  scroll-margin-top:calc(var(--topbar-h) + 16px);
+  position:relative;line-height:1.4;
+}
+.doc h2{
+  margin:3.1em 0 1em;padding-bottom:.42em;font-size:1.56rem;font-weight:700;
+  border-bottom:1px solid var(--c-border);letter-spacing:-.005em;
+}
+.doc h3{
+  margin:2.15em 0 .75em;padding-left:12px;font-size:1.2rem;font-weight:650;
+  border-left:4px solid var(--c-accent-line);
+}
+.doc h4{margin:1.75em 0 .6em;font-size:1.03rem;font-weight:650}
+
+.h-anchor{
+  margin-left:.5em;color:var(--c-text-faint);text-decoration:none;font-weight:400;
+  font-size:.85em;opacity:0;transition:opacity .15s,color .15s;
+}
+.doc h2:hover .h-anchor,.doc h3:hover .h-anchor,.doc h4:hover .h-anchor{opacity:.55}
+.h-anchor:hover{color:var(--c-accent);opacity:1}
+
+.doc p{margin:.95em 0}
+.doc img{max-width:100%;height:auto;display:block;margin:1.4em auto;border-radius:var(--radius);border:1px solid var(--c-border)}
+.doc a{color:var(--c-accent);text-decoration:none;border-bottom:1px solid var(--c-accent-line)}
+.doc a:hover{border-bottom-color:currentColor}
+.doc strong{font-weight:680;color:var(--c-text)}
+.doc em{font-style:italic}
+
+.doc ul,.doc ol{margin:.9em 0;padding-left:1.6em}
+.doc li{margin:.34em 0}
+.doc li>ul,.doc li>ol{margin:.3em 0}
+.doc ul{list-style:disc}
+.doc ul ul{list-style:circle}
+
+.doc hr{
+  height:1px;margin:2.8em 0;border:none;
+  background:linear-gradient(90deg,var(--c-border),var(--c-border-soft) 65%,transparent);
+}
+
+.doc blockquote{
+  margin:1.25em 0;padding:13px 18px;
+  background:var(--c-quote-bg);border-left:3px solid var(--c-accent-line);
+  border-radius:0 9px 9px 0;color:var(--c-text-soft);font-size:14.6px;
+}
+.doc blockquote p{margin:.45em 0}
+.doc blockquote p:first-child{margin-top:0}
+.doc blockquote p:last-child{margin-bottom:0}
+.doc blockquote strong{color:var(--c-text)}
+.doc blockquote code{background:var(--c-bg)}
+
+/* 表格 */
+.table-wrap{
+  display:block;width:100%;margin:1.35em 0;
+  overflow-x:auto;overflow-y:hidden;
+  border:1px solid var(--c-border);border-radius:var(--radius);background:var(--c-bg);
+}
+.doc table{width:100%;border-collapse:collapse;font-size:13.8px}
+.doc thead th{
+  background:var(--c-bg-soft);font-weight:680;text-align:left;
+  padding:10px 13px;border-bottom:1px solid var(--c-border);white-space:nowrap;
+}
+.doc td{padding:9px 13px;border-bottom:1px solid var(--c-border-soft);vertical-align:top;line-height:1.65}
+.doc tbody tr:last-child td{border-bottom:none}
+.doc tbody tr:hover{background:var(--c-bg-soft)}
+
+/* 代码 */
+.doc pre{
+  position:relative;margin:1.25em 0;padding:15px 17px;
+  background:var(--c-bg-code);border:1px solid var(--c-border);
+  border-radius:var(--radius);overflow-x:auto;
+}
+.doc pre code{
+  display:block;font-family:var(--font-mono);font-size:12.7px;line-height:1.62;
+  white-space:pre;color:var(--c-text);background:none;border:none;padding:0;
+}
+.doc :not(pre)>code{
+  font-family:var(--font-mono);font-size:.87em;
+  background:var(--c-bg-code);border:1px solid var(--c-border-soft);
+  padding:1.5px 5px;border-radius:6px;
+}
+.copy-btn{
+  position:absolute;top:8px;right:8px;padding:3px 9px;
+  font-size:11px;font-family:inherit;
+  background:var(--c-bg);color:var(--c-text-soft);
+  border:1px solid var(--c-border);border-radius:6px;cursor:pointer;
+  opacity:0;transition:opacity .15s,color .15s;
+}
+.doc pre:hover .copy-btn,.copy-btn.done{opacity:1}
+.copy-btn:hover{color:var(--c-text);border-color:var(--c-text-faint)}
+
+/* 公式 */
+eq{display:inline}
+eqn{display:block;margin:1.05em 0}
+.doc .katex{font-size:1.06em}
+.katex-display{
+  margin:0;padding:3px 2px;overflow-x:auto;overflow-y:hidden;
+}
+.katex-display>.katex{white-space:nowrap}
+.katex-display::-webkit-scrollbar{height:6px}
+
+/* 回顶 */
+.backtop{
+  position:fixed;right:22px;bottom:26px;width:40px;height:40px;
+  display:none;align-items:center;justify-content:center;font-size:16px;
+  background:var(--c-bg);color:var(--c-text-soft);
+  border:1px solid var(--c-border);border-radius:50%;
+  box-shadow:var(--shadow-md);cursor:pointer;z-index:30;transition:.15s;
+}
+.backtop.show{display:flex}
+.backtop:hover{color:var(--c-accent);border-color:var(--c-accent)}
+
+/* ================= 响应式 ================= */
+@media (max-width:1080px){
+  :root{--sidebar-w:292px}
+  #menuBtn{display:flex}
+  .shell{grid-template-columns:minmax(0,1fr)}
+  .sidebar{
+    position:fixed;left:0;top:calc(var(--topbar-h) + 32px);z-index:35;
+    width:var(--sidebar-w);height:calc(100vh - var(--topbar-h) - 32px);
+    transform:translateX(-102%);transition:transform .22s ease;
+    box-shadow:var(--shadow-md);
+  }
+  .sidebar.open{transform:none}
+  .sitenav{padding:0 12px;font-size:12px;height:32px}
+  .doc{padding:0 22px 120px}
+  .doc-hero{margin:0 -22px 26px;padding:34px 22px 26px}
+  .doc-hero h1{font-size:1.6rem}
+  .doc h2{font-size:1.35rem}
+  .doc h3{font-size:1.12rem}
+}
+@media print{
+  .topbar,.sidebar,.backtop,.progress,.copy-btn,.mask,.sitenav{display:none!important}
+  .shell{display:block}
+  .doc{max-width:none;padding:0}
+  .doc-hero{margin:0 0 20px;padding:0 0 16px;background:none}
+  .doc h2{page-break-before:always;break-before:page}
+  .doc h2:first-of-type{page-break-before:auto;break-before:auto}
+  .doc a{color:#000;text-decoration:underline;border:none}
+  .doc pre{white-space:pre-wrap;word-break:break-word;border:1px solid #ccc}
+  .table-wrap{overflow:visible}
+  .doc table{font-size:11px}
+}
+
+/* ================= 跨页次级导航条（四个页面共用） ================= */
+.sitenav{
+  position:sticky;top:var(--topbar-h);z-index:39;
+  display:flex;align-items:center;flex-wrap:wrap;gap:2px;
+  padding:0 16px;height:36px;
+  background:var(--c-bg-side);border-bottom:1px solid var(--c-border);
+  font-size:12.6px;line-height:1;
+}
+.sitenav a,.sitenav .sitenav-cur{
+  display:inline-flex;align-items:center;height:24px;
+  padding:0 9px;border-radius:6px;
+  color:var(--c-text-soft);text-decoration:none;
+  white-space:nowrap;transition:background .15s,color .15s;
+}
+.sitenav a:hover{background:var(--c-bg-soft);color:var(--c-accent)}
+.sitenav .sitenav-cur{
+  background:var(--c-accent-soft);color:var(--c-accent);
+  font-weight:650;cursor:default;
+}
+.sitenav i{
+  color:var(--c-text-faint);font-style:normal;font-size:11px;
+  padding:0 1px;user-select:none;
+}
+/* 顶栏「返回首页」链接（子页面专用） */
+.home-btn{
+  flex:none;display:inline-flex;align-items:center;gap:5px;
+  height:34px;padding:0 11px;border-radius:8px;
+  font-size:13.4px;font-weight:600;text-decoration:none;white-space:nowrap;
+  background:var(--c-bg);color:var(--c-text-soft);
+  border:1px solid var(--c-border);transition:.15s;
+}
+.home-btn:hover{background:var(--c-accent-soft);color:var(--c-accent);border-color:var(--c-accent-line)}
+.home-btn .arw{font-size:14px;line-height:1;transform:translateY(-.5px)}
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<header class="topbar">
+<button class="icon-btn" id="menuBtn" type="button" aria-label="打开目录">☰</button>
+<a class="home-btn" href="index.html" title="返回首页"><span class="arw">←</span>首页</a>
+<div class="brand"><span class="logo">P&amp;R</span><span>布线算法调研</span></div>
+<button class="icon-btn" id="themeBtn" type="button" aria-label="切换主题">☾</button>
+</header>
+<nav class="sitenav"><a href="index.html">首页</a><i>·</i><a href="chip-design-flow.html">全流程笔记</a><i>·</i><a href="pnr-survey.html">文献综述</a><i>·</i><a href="classic-methods.html">经典方法</a><i>·</i><span class="sitenav-cur">布线调研</span></nav>
+<div class="shell">
+<aside class="sidebar" id="sidebar">
+<div class="nav-tools">
+<div class="search"><input id="navSearch" type="search" placeholder="搜索目录…" autocomplete="off"></div>
+<button class="mini-btn" id="expandAll" type="button">展开</button>
+<button class="mini-btn" id="collapseAll" type="button">折叠</button>
+</div>
+<nav class="nav">
+<a class="nav-link lv1" href="#top">📄 布线算法调研</a>
+<div class="nav-group"><div class="nav-row"><a class="nav-link lv2" href="#sec-0">0. 布线任务概述</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children">
+<a class="nav-link lv3" href="#sec-0-1">0.1 全局布线：规划整体路线</a>
+<a class="nav-link lv3" href="#sec-0-2">0.2 详细布线：落实具体连线</a>
+<a class="nav-link lv3" href="#sec-0-3">0.3 两个阶段怎样衔接</a>
+</div></div>
+<div class="nav-group collapsed"><div class="nav-row"><a class="nav-link lv2" href="#sec-1">1. 全局布线：从基本算法到现代路由器</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children">
+<a class="nav-link lv3" href="#sec-1-1">1.1 多端连接：一条网怎样连成树</a>
+<a class="nav-link lv4" href="#sec-1-1-1">1.1.1 RSMT 是什么</a>
+<a class="nav-link lv4" href="#sec-1-1-2">1.1.2 RSMT 要决定什么</a>
+<a class="nav-link lv4" href="#sec-1-1-3">1.1.3 FLUTE：怎样快速构造</a>
+<a class="nav-link lv3" href="#sec-1-2">1.2 单线路径：两点之间怎么走</a>
+<a class="nav-link lv4" href="#sec-1-2-1">1.2.1 Lee 迷宫算法（1961）</a>
+<a class="nav-link lv4" href="#sec-1-2-2">1.2.2 A*（1968）</a>
+<a class="nav-link lv4" href="#sec-1-2-3">1.2.3 Hightower 线搜索（1969）</a>
+<a class="nav-link lv3" href="#sec-1-3">1.3 多层网络：很多条网怎样不互相堵塞</a>
+<a class="nav-link lv3" href="#sec-1-4">1.4 层分配：路径怎样安排到金属层</a>
+<a class="nav-link lv3" href="#sec-1-5">1.5 完整路由器：从 FastRoute 到 2026</a>
+<a class="nav-link lv4" href="#sec-1-5-1">1.5.1 2000 年代：FastRoute 把三类算法组装成路由器</a>
+<a class="nav-link lv4" href="#sec-1-5-2">1.5.2 2010 年代：NCTU-GR 与 SPRoute，改进重布与并行</a>
+<a class="nav-link lv4" href="#sec-1-5-3">1.5.3 2020–2023：CUGR 与 EDGE，直接处理三维布线资源</a>
+<a class="nav-link lv4" href="#sec-1-5-4">1.5.4 2024：ISPD 大规模基准、InstantGR 与 HeLEM-GR</a>
+<a class="nav-link lv4" href="#sec-1-5-5">1.5.5 2025–2026：GAP-LA、惩罚更新与并行分批</a>
+<a class="nav-link lv4" href="#sec-1-5-6">1.5.6 全局布线器发展脉络小结</a>
+</div></div>
+<div class="nav-group collapsed"><div class="nav-row"><a class="nav-link lv2" href="#sec-2">2. 详细布线器</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children">
+<a class="nav-link lv3" href="#sec-2-1">2.1 TritonRoute 与 Dr. CU：完整流程</a>
+<a class="nav-link lv3" href="#sec-2-2">2.2 引脚接入：先保证“有地方接”</a>
+<a class="nav-link lv3" href="#sec-2-3">2.3 轨道分配：先决定“走哪条车道”</a>
+<a class="nav-link lv3" href="#sec-2-4">2.4 具体路径搜索：在轨道和过孔上落地</a>
+<a class="nav-link lv3" href="#sec-2-5">2.5 搜索与修复：把初始结果修到合法</a>
+<a class="nav-link lv3" href="#sec-2-6">2.6 详细布线的算法链条</a>
+</div></div>
+<div class="nav-group collapsed"><div class="nav-row"><a class="nav-link lv2" href="#sec-3">3. 评价标准</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children">
+<a class="nav-link lv3" href="#sec-3-1">3.1 2024：线长与拥塞</a>
+<a class="nav-link lv3" href="#sec-3-2">3.2 2025：时序、功耗与拥塞</a>
+<a class="nav-link lv3" href="#sec-3-3">3.3 评价变化带出的算法</a>
+</div></div>
+<div class="nav-group plain"><a class="nav-link lv2" href="#sec-4">4. 布线信息进入上游</a></div>
+<div class="nav-group plain"><a class="nav-link lv2" href="#sec-5">5. 三维、光子与封装</a></div>
+<div class="nav-group collapsed"><div class="nav-row"><a class="nav-link lv2" href="#sub-1">文献表</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children">
+<a class="nav-link lv3" href="#sub-2">全局布线</a>
+<a class="nav-link lv3" href="#sub-3">详细布线与引脚接入</a>
+<a class="nav-link lv3" href="#sub-4">上游、三维与封装</a>
+<a class="nav-link lv3" href="#sub-5">尚未作为定论引用的条目</a>
+</div></div>
+
+<div class="nav-empty" id="navEmpty">没有匹配的条目</div>
+</nav>
+</aside>
+<div class="mask" id="mask"></div>
+<main class="doc" id="doc">
+<header class="doc-hero"><h1 id="top">布线算法调研<a class="h-anchor" href="#top" aria-label="本节链接">#</a></h1></header>
+<h2 id="sec-0">0. 布线任务概述<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h2>
+<p>布线通常分为两个阶段：<strong>全局布线先规划整体路线，详细布线再落实具体金属线和过孔。</strong></p>
+<h3 id="sec-0-1">0.1 全局布线：规划整体路线<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h3>
+<p>全局布线把芯片划成较粗的网格，规划每条网经过哪些区域、使用哪些金属层，并协调各条网对布线资源的使用。它主要关注整体是否拥塞，以及线长、时序等指标，而不确定每根金属线的精确位置。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">任务</th>
+<th style="text-align:left">对应的经典算法或方法</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">为一条多引脚的网设计分叉连接结构</td>
+<td style="text-align:left">矩形斯坦纳树（RSMT）、FLUTE</td>
+</tr>
+<tr>
+<td style="text-align:left">为各段连线寻找粗粒度路径</td>
+<td style="text-align:left">Pattern routing、Lee 迷宫、Hightower 线搜索、A*、Dijkstra</td>
+</tr>
+<tr>
+<td style="text-align:left">协调不同网的资源使用，缓解拥塞</td>
+<td style="text-align:left">协商式拥塞、PathFinder 思想、拆线重布（rip-up and reroute）</td>
+</tr>
+<tr>
+<td style="text-align:left">将路径安排到不同金属层，兼顾过孔和容量</td>
+<td style="text-align:left">层分配（Layer Assignment），常用动态规划等方法</td>
+</tr>
+</tbody>
+</table></div>
+<p>**输出：**粗粒度路径、金属层信息和布线引导区域（route guide），供详细布线使用。</p>
+<h3 id="sec-0-2">0.2 详细布线：落实具体连线<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h3>
+<p>详细布线根据全局规划，确定金属线具体走哪条轨道、在哪放置过孔，以及如何接到单元引脚。除了完成连接，还要满足线宽、间距、过孔等制造规则，并尽量控制线长、过孔数量和时序代价。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">任务</th>
+<th style="text-align:left">对应的算法或方法</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">找到合法的引脚接入位置和接入方式</td>
+<td style="text-align:left">引脚可达性分析（Pin Access）、接入方案选择</td>
+</tr>
+<tr>
+<td style="text-align:left">为线段安排具体轨道</td>
+<td style="text-align:left">轨道分配（Track Assignment），可采用整数规划、网络流等方法</td>
+</tr>
+<tr>
+<td style="text-align:left">搜索具体的金属线路径</td>
+<td style="text-align:left">A*、Dijkstra、迷宫搜索及其变体</td>
+</tr>
+<tr>
+<td style="text-align:left">发现并消除设计规则违例</td>
+<td style="text-align:left">设计规则检查（DRC）、搜索与修复（Search and Repair）、拆线重布</td>
+</tr>
+</tbody>
+</table></div>
+<p>**输出：**具体金属线和过孔的几何形状与位置，供后续寄生参数提取、物理验证和签核使用。</p>
+<h3 id="sec-0-3">0.3 两个阶段怎样衔接<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h3>
+<p>可以把全局布线理解为「先确定走哪些街区」，详细布线理解为「再确定走哪条车道、在哪里转弯」。如果详细布线发现某处实在走不通，就把问题反馈给上游，调整路线后再布。</p>
+<hr>
+<h2 id="sec-1">1. 全局布线：从基本算法到现代路由器<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h2>
+<h3 id="sec-1-1">1.1 多端连接：一条网怎样连成树<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h3>
+<p>一条网往往不止两个引脚。这里要解决的问题，和两点路径搜索不同：</p>
+<ul>
+<li><strong>两点布线</strong>：已知起点和终点，寻找一条连接它们的路径；</li>
+<li><strong>RSMT</strong>：已知多个引脚，先决定整条网应该怎样分叉、哪些线路可以共享。</li>
+</ul>
+<p>多端连接要回答的，就是&quot;这条网该连成什么形状&quot;。它分成三层：先弄清楚 RSMT 这个问题的定义，再确认它要决定哪些东西，最后看经典的快速构造算法 FLUTE 怎么做。</p>
+<h4 id="sec-1-1-1">1.1.1 RSMT 是什么<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h4>
+<p>RSMT 的全称是 <strong>Rectilinear Steiner Minimal Tree</strong>，即<strong>直角斯坦纳最小树</strong>。这个名称包含三个关键词：</p>
+<ul>
+<li><strong>Rectilinear（直角）</strong>：边只能水平或垂直延伸，不能直接走斜线；</li>
+<li><strong>Steiner（斯坦纳）</strong>：允许在原有引脚之外增加额外的分叉点，即 Steiner point；</li>
+<li><strong>Minimal Tree（最小树）</strong>：连接全部引脚，并尽量缩短整棵树的总线长。</li>
+</ul>
+<p><strong>用一个例子理解。</strong> 假设一条网有三个引脚 A、B、C，坐标分别为：</p>
+<pre><code class="language-text">A = (0, 0)
+B = (4, 0)
+C = (2, 2)
+</code></pre>
+<p>下面左右两张图用的是同一组引脚：左图是&quot;不共享&quot;的连接方式，右图是引入分叉点后的连接方式。</p>
+<p><img src="assets/rsmt-vs-terminal-tree.png" alt="同一组引脚的两种连接方式：左为终端树（不共享，总线长 8），右为 RSMT（引入 Steiner 点 S，总线长 6）" loading="lazy" decoding="async"></p>
+<p><strong>左图：不共享。</strong> 把 C 单独接到 A，再把 A 接到 B。两条路径分别是 A→C 和 A→B，各自按直角距离计长：</p>
+<pre><code class="language-text">A-B = 4
+A-C = |2-0| + |2-0| = 4
+合计 = 4 + 4 = 8
+</code></pre>
+<p>其中 A 到 (2, 0) 这一段被两条路径重复经过，图中标为 overlap。注意这里是<strong>把两条路径各自的长度直接相加</strong>，重复段被算了两次；实际物理线长要合并重叠线段后才算得准。</p>
+<p><strong>右图：引入 Steiner 点。</strong> 在 A、B 之间的公共干线上增加一个分叉点 S = (2, 0)。S 不是电路中的真实引脚，只是为了让线路分叉而增加的 Steiner point。此时三段线分别为：</p>
+<pre><code class="language-text">A-S = 2
+S-B = 2
+S-C = 2
+</code></pre>
+<p>总线长为：</p>
+<pre><code class="language-text">2 + 2 + 2 = 6
+</code></pre>
+<p>比左图的 8 短。这个例子体现了 RSMT 的核心：<strong>它不是给每两个引脚分别找最短路径，而是让多条支路共享公共线路，从而缩短整条多端网的总长度。</strong></p>
+<h4 id="sec-1-1-2">1.1.2 RSMT 要决定什么<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h4>
+<p>RSMT 实际上同时寻找两件事：</p>
+<ol>
+<li><strong>拓扑结构</strong>：哪些引脚连接到同一个分叉点，整棵树应该怎样分支；</li>
+<li><strong>Steiner 点位置</strong>：每个额外分叉点应该放在哪里。</li>
+</ol>
+<p>因此，RSMT 的输出是一棵连接树，包含引脚、Steiner 点以及它们之间的水平/垂直边；它还不是最终的金属几何，也没有决定具体轨道、过孔位置或其他网络冲突后的最终路径。</p>
+<h4 id="sec-1-1-3">1.1.3 FLUTE：怎样快速构造<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h4>
+<p>**FLUTE（Chu 与 Wong，2008）**是经典的快速 RSMT 构造算法。它不改变 RSMT 要解决的问题，而是给出一种足够快的求解方式，使构造斯坦纳树可以作为常规步骤放进布线器里反复调用。</p>
+<p><strong>为什么不能每次从头暴力搜索。</strong> RSMT 想找最短的直角连接树。引脚少的时候，可以枚举各种连接结构；引脚一多，可能的树形数量迅速增长，再加上要比较各种分叉点位置，逐个穷举并不现实。</p>
+<p>但可以利用一个关键性质：</p>
+<blockquote>
+<p>一棵直角斯坦纳树的<strong>候选形状</strong>，主要由各个引脚的<strong>相对位置关系</strong>决定，而不是它们在芯片上的绝对坐标。</p>
+</blockquote>
+<p>需要注意的是，<strong>相对位置关系相同，并不等于最优树形唯一</strong>。两个引脚是「左上、右下」这种相对格局，会限定候选树形的范围；但同样的相对格局下，如果引脚之间的<strong>间距不同</strong>，各候选拓扑的总线长也会随之变化，最优的那个可能并不一样。所以 FLUTE 保存的是「候选树形」，最终仍要用真实坐标和间距去评估、挑选。</p>
+<p>下图是 FLUTE 的两条路径：小规模网络直接查表，大规模网络先递归拆成小网络、再复用查表，最后都要映射回真实坐标。</p>
+<p><img src="assets/flute-construction.png" alt="FLUTE 的构造流程：左栏小规模网络查表取候选树形，右栏大规模网络递归分解成小网络后复用查表，底部为映射回真实坐标" loading="lazy" decoding="async"></p>
+<p><strong>查表：小规模网络直接取答案。</strong> 基于这个性质，FLUTE 事先把引脚数量较少时各种相对格局下的候选树形算好，存成一张表。运行时，把这条网的引脚转成一个「相对格局」编码，用编码查出若干候选树形，再用真实坐标和间距评估，选出最优的那一个。</p>
+<p>查到的是「抽象形状」，例如「第三个引脚接在主干中间」这类关系，还不包含真实坐标。引脚数在表的支持范围内时，可以取到精确最优；超出范围则通常转为近似。</p>
+<p><strong>递归：大规模网络拆成小网络。</strong> 引脚数超过表的规模时，不能一次查完，FLUTE 就把大网按某个方向（通常是 x 坐标）切成几组，让每组的规模落回可查表的范围。每组用上面同样的查表流程各建一棵子树，再把这些子树在边界处合并成一棵大树。</p>
+<p>递归分解的关键是<strong>切法</strong>：要尽量让子树之间的连接代价小。切在哪里不同，合并后的总长度差别可能很大，因此需要比较若干种切法，取总长最小的那个。</p>
+<p><strong>映射：把抽象树形还原成真实坐标。</strong> 查表或递归得到的都只是抽象连接关系，还要把每个分叉点落到实际格子上，才得到一棵真实的直角斯坦纳树。这一步决定 Steiner 点的实际位置，也是线长估计和后续布线的依据。</p>
+<p><strong>输出。</strong> FLUTE 输出的是一棵近似最优的矩形斯坦纳树：连接全部引脚，边水平或垂直，包含若干个 Steiner 点，总线长接近理论最优。它不负责决定走哪条轨道、使用哪层金属，也不负责处理其他网的拥塞竞争。</p>
+<h3 id="sec-1-2">1.2 单线路径：两点之间怎么走<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h3>
+<p>把芯片抽象成网格后，两点之间的任务就是：从起点沿着可走的格子到终点，尽量少走、避开障碍。经典算法的差别，主要在搜索时「看多远」以及「是否保证找到最短路」。下面按出现时间依次介绍 Lee、A* 和 Hightower 三种算法。</p>
+<h4 id="sec-1-2-1">1.2.1 Lee 迷宫算法（1961）<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h4>
+<p>它解决的是一个明确的子问题：<strong>在给定障碍和起终点的情况下，找出一条可行的、步数最少的路径</strong>。它只负责连接两个端点，不负责多端网的拓扑，也不负责协调其他网的资源竞争。</p>
+<p><strong>网格模型。</strong> 将布线区域离散成格子，每个格子可以处于三种状态：可走、障碍、已访问。起点 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi></mrow><annotation encoding="application/x-tex">S</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.0576em;">S</span></span></span></span></eq> 和终点 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi></mrow><annotation encoding="application/x-tex">T</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">T</span></span></span></span></eq> 位于可走格子中。二维情况下，一个格子通常有上、下、左、右四个邻居；如果允许斜走，邻居定义也可以扩展。经典 VLSI 迷宫布线通常使用四连通网格，路径长度就是经过的格子数或边数。</p>
+<pre><code class="language-text">起点 S                         终点 T
+  0   1   2   ▓   ·             ·   ·   ·   ·   ·
+  ·   ▓   3   ▓   ·             ·   ▓   ·   ▓   ·
+  ·   ·   4   5   6             ·   ·   ·   ·   T
+
+0、1、2、3... 是从 S 扩展时写入的距离标记
+▓ 是障碍，· 是尚未访问的可走格子
+</code></pre>
+<p><strong>第一步：波前扩展。</strong> 从起点开始，将距离标记为 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn></mrow><annotation encoding="application/x-tex">0</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6444em;"></span><span class="mord">0</span></span></span></span></eq>，放入队列。随后反复执行：从队列头部取出一个格子，把它的所有合法邻居标记为“当前距离 + 1”，并将这些邻居放到队列尾部。已经访问过的格子不重复加入队列，障碍格子也不会进入队列。</p>
+<p>因为队列是先进先出（FIFO），距离为 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>k</mi></mrow><annotation encoding="application/x-tex">k</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6944em;"></span><span class="mord mathnormal" style="margin-right:0.0315em;">k</span></span></span></span></eq> 的格子会全部处理完后，才会处理距离为 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>k</mi><mo>+</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">k+1</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.7778em;vertical-align:-0.0833em;"></span><span class="mord mathnormal" style="margin-right:0.0315em;">k</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.6444em;"></span><span class="mord">1</span></span></span></span></eq> 的格子。因此搜索像水波一样一圈一圈向外扩散：第一圈是距离 1，第二圈是距离 2，直到波前碰到终点 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi></mrow><annotation encoding="application/x-tex">T</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">T</span></span></span></span></eq>，或者队列为空。</p>
+<p><strong>第二步：判断是否可达。</strong> 如果终点被标记，说明至少存在一条路径；如果所有可走格子都扩展完，终点仍未被标记，说明在当前障碍布局下不存在路径。这个判断不依赖“运气”：只要邻接关系和障碍模型正确，算法会遍历所有可能到达的格子。</p>
+<p><strong>第三步：反向回溯。</strong> 找到终点后，从 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi></mrow><annotation encoding="application/x-tex">T</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">T</span></span></span></span></eq> 出发，在相邻格子中寻找距离标记比当前小 1 的格子。例如当前格子标记为 7，就找标记为 6 的邻居，再找 5、4，直到回到起点 0。把这条反向序列倒过来，就得到从 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi></mrow><annotation encoding="application/x-tex">S</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.0576em;">S</span></span></span></span></eq> 到 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi></mrow><annotation encoding="application/x-tex">T</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">T</span></span></span></span></eq> 的路径。</p>
+<pre><code class="language-text">正向扩展：S(0) -&gt; 1 -&gt; 2 -&gt; 3 -&gt; ... -&gt; T(k)
+反向回溯：T(k) -&gt; k-1 -&gt; k-2 -&gt; ... -&gt; 1 -&gt; S(0)
+</code></pre>
+<p><strong>为什么能找到最短路？</strong> 在四连通、每条边代价相同的网格中，BFS 按距离从小到大处理节点。终点第一次被访问时，找到的距离就是从起点到终点的最小步数；如果存在另一条更短路径，它应该已经在更早的波前中到达终点。因此，Lee 算法得到的是最短路径之一。若多个邻居具有相同的前驱距离，回溯时选择哪一个，会得到不同但等长的最短路径。</p>
+<p>实际实现可以不单独保存前驱节点，而是利用距离标记回溯；也可以在回溯后清除本次搜索写入的标记，以便下一条网继续使用网格。完整全局布线器还会在格子或边上记录容量、占用量和代价，但这些属于多网分配层，不是 Lee 算法本身。</p>
+<p><strong>复杂度。</strong> 设搜索区域有 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>V</mi></mrow><annotation encoding="application/x-tex">V</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.2222em;">V</span></span></span></span></eq> 个格子、相邻关系有 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>E</mi></mrow><annotation encoding="application/x-tex">E</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.0576em;">E</span></span></span></span></eq> 条，BFS 的时间复杂度是 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>O</mi><mo stretchy="false">(</mo><mi>V</mi><mo>+</mo><mi>E</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">O(V+E)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.0278em;">O</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.2222em;">V</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.0576em;">E</span><span class="mclose">)</span></span></span></span></eq>；规则四连通网格中可近似写成 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>O</mi><mo stretchy="false">(</mo><mi>V</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">O(V)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.0278em;">O</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.2222em;">V</span><span class="mclose">)</span></span></span></span></eq>，空间复杂度也是 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>O</mi><mo stretchy="false">(</mo><mi>V</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">O(V)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.0278em;">O</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.2222em;">V</span><span class="mclose">)</span></span></span></span></eq>。如果起终点距离很短但周围障碍复杂，Lee 仍可能扩展大片区域，因为它没有利用“终点大概在哪个方向”的信息。</p>
+<p><strong>优点与局限。</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">优点</th>
+<th style="text-align:left">局限</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">只要存在路径，就能找到一条路径</td>
+<td style="text-align:left">可能访问大量与终点无关的格子</td>
+</tr>
+<tr>
+<td style="text-align:left">等权网格下保证最短</td>
+<td style="text-align:left">需要为格子保存访问状态和距离，内存开销大</td>
+</tr>
+<tr>
+<td style="text-align:left">能处理复杂障碍，原理简单可靠</td>
+<td style="text-align:left">原始算法只解决两点连接，不考虑其他网的拥塞</td>
+</tr>
+<tr>
+<td style="text-align:left">便于加入障碍、层和边的基本约束</td>
+<td style="text-align:left">加入不同边代价后，普通 BFS 不再保证代价最优</td>
+</tr>
+</tbody>
+</table></div>
+<h4 id="sec-1-2-2">1.2.2 A*（1968）<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h4>
+<p>A* 解决的是同一个问题——网格上两点之间找路——但改变了「下一步先扩展哪个格子」的规则。它不在已经进入待扩展集合的格子里随机或按进队顺序挑选，而是给每个候选格子算一个分数，优先扩展分数最低的那个。</p>
+<p><strong>核心是评分函数：</strong></p>
+<section><eqn><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>f</mi><mo stretchy="false">(</mo><mi>n</mi><mo stretchy="false">)</mo><mo>=</mo><mi>g</mi><mo stretchy="false">(</mo><mi>n</mi><mo stretchy="false">)</mo><mo>+</mo><mi>h</mi><mo stretchy="false">(</mo><mi>n</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">f(n) = g(n) + h(n)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.1076em;">f</span><span class="mopen">(</span><span class="mord mathnormal">n</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.0359em;">g</span><span class="mopen">(</span><span class="mord mathnormal">n</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">h</span><span class="mopen">(</span><span class="mord mathnormal">n</span><span class="mclose">)</span></span></span></span></span></eqn></section><div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">符号</th>
+<th style="text-align:left">含义</th>
+<th style="text-align:left">性质</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mo stretchy="false">(</mo><mi>n</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">g(n)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.0359em;">g</span><span class="mopen">(</span><span class="mord mathnormal">n</span><span class="mclose">)</span></span></span></span></eq></td>
+<td style="text-align:left">从起点走到 n，当前已知的最好路径已经花掉的代价</td>
+<td style="text-align:left">由搜索记录和维护</td>
+</tr>
+<tr>
+<td style="text-align:left"><eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>h</mi><mo stretchy="false">(</mo><mi>n</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">h(n)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">h</span><span class="mopen">(</span><span class="mord mathnormal">n</span><span class="mclose">)</span></span></span></span></eq></td>
+<td style="text-align:left">从 n 到终点估计还要花多少代价</td>
+<td style="text-align:left">估计的</td>
+</tr>
+<tr>
+<td style="text-align:left"><eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mo stretchy="false">(</mo><mi>n</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">f(n)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.1076em;">f</span><span class="mopen">(</span><span class="mord mathnormal">n</span><span class="mclose">)</span></span></span></span></eq></td>
+<td style="text-align:left">经过 n 到终点的估计总代价</td>
+<td style="text-align:left">用来排序</td>
+</tr>
+</tbody>
+</table></div>
+<p>两个极端可以帮助理解：只看 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi></mrow><annotation encoding="application/x-tex">g</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.625em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.0359em;">g</span></span></span></span></eq> 就是 Dijkstra，四面八方均匀扩散，慢但稳；只看 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>h</mi></mrow><annotation encoding="application/x-tex">h</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6944em;"></span><span class="mord mathnormal">h</span></span></span></span></eq> 就是贪心，一路朝终点冲，可能撞上障碍后绕很远，不保证最优。A* 两个都看，用 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>h</mi></mrow><annotation encoding="application/x-tex">h</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6944em;"></span><span class="mord mathnormal">h</span></span></span></span></eq> 提供方向感，用 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi></mrow><annotation encoding="application/x-tex">g</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.625em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.0359em;">g</span></span></span></span></eq> 保证不吃亏。</p>
+<p><strong>启发函数怎么取。</strong> 在四连通网格上，常用曼哈顿距离：</p>
+<section><eqn><span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mi>h</mi><mo stretchy="false">(</mo><mi>n</mi><mo stretchy="false">)</mo><mo>=</mo><mi mathvariant="normal">∣</mi><msub><mi>x</mi><mi>n</mi></msub><mo>−</mo><msub><mi>x</mi><mi>T</mi></msub><mi mathvariant="normal">∣</mi><mo>+</mo><mi mathvariant="normal">∣</mi><msub><mi>y</mi><mi>n</mi></msub><mo>−</mo><msub><mi>y</mi><mi>T</mi></msub><mi mathvariant="normal">∣</mi></mrow><annotation encoding="application/x-tex">h(n) = |x_n - x_T| + |y_n - y_T|</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">h</span><span class="mopen">(</span><span class="mord mathnormal">n</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord">∣</span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">n</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3283em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.1389em;">T</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord">∣</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord">∣</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0359em;">y</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">n</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0359em;">y</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3283em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.1389em;">T</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord">∣</span></span></span></span></span></eqn></section><p>它的含义是：不管中间有多少障碍，至少还要走这么多格。所以它估计的是剩余代价的一个下限，不会高于真实值。</p>
+<p><strong>执行过程。</strong> 维护两个集合：待扩展的开放集，和已经确定最短路径的关闭集。</p>
+<ol>
+<li>起点的 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">g = 0</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.625em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.0359em;">g</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.6444em;"></span><span class="mord">0</span></span></span></span></eq>，<eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mo>=</mo><mi>h</mi></mrow><annotation encoding="application/x-tex">f = h</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.1076em;">f</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.6944em;"></span><span class="mord mathnormal">h</span></span></span></span></eq>，放入开放集。</li>
+<li>从开放集取出 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi></mrow><annotation encoding="application/x-tex">f</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.1076em;">f</span></span></span></span></eq> 最小的格子 n。</li>
+<li>如果 n 是终点，结束，当前路径就是最短路径。</li>
+<li>否则把 n 移入关闭集，检查它的每个可走邻居 v：计算新的 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mo stretchy="false">(</mo><mi>v</mi><mo stretchy="false">)</mo><mo>=</mo><mi>g</mi><mo stretchy="false">(</mo><mi>n</mi><mo stretchy="false">)</mo><mo>+</mo><mtext>cost</mtext><mo stretchy="false">(</mo><mi>n</mi><mo separator="true">,</mo><mi>v</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">g(v) = g(n) + \text{cost}(n,v)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.0359em;">g</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.0359em;">v</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.0359em;">g</span><span class="mopen">(</span><span class="mord mathnormal">n</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord text"><span class="mord">cost</span></span><span class="mopen">(</span><span class="mord mathnormal">n</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.0359em;">v</span><span class="mclose">)</span></span></span></span></eq>；如果这个值比 v 原来的 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi></mrow><annotation encoding="application/x-tex">g</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.625em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.0359em;">g</span></span></span></span></eq> 更小，就更新 v 的 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi></mrow><annotation encoding="application/x-tex">g</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.625em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.0359em;">g</span></span></span></span></eq> 和 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi></mrow><annotation encoding="application/x-tex">f</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.1076em;">f</span></span></span></span></eq>，记录它的前驱是 n，并把 v 放入开放集。</li>
+<li>重复第 2 步，直到取出终点，或开放集为空（不可达）。</li>
+</ol>
+<p>同一个格子可能被多次改进并多次进入开放集，因此取出时要检查它是否已在关闭集中，避免重复处理。</p>
+<p><strong>为什么能保证最优。</strong> 关键条件是 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>h</mi></mrow><annotation encoding="application/x-tex">h</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6944em;"></span><span class="mord mathnormal">h</span></span></span></span></eq> 不能高估真实的剩余代价，这个性质叫可采纳性。当 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>h</mi></mrow><annotation encoding="application/x-tex">h</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6944em;"></span><span class="mord mathnormal">h</span></span></span></span></eq> 可采纳时，A* 第一次从开放集中取出终点，所对应的路径就是代价最低的。直观理解为：任何被高估的路径都会被推到后面，真正最短的那条一定最早被确认。曼哈顿距离在四连通等权网格上满足可采纳性。</p>
+<p>如果 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>h</mi></mrow><annotation encoding="application/x-tex">h</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6944em;"></span><span class="mord mathnormal">h</span></span></span></span></eq> 越接近真实剩余代价，A* 需要扩展的节点通常越少，搜索越快；当 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>h</mi></mrow><annotation encoding="application/x-tex">h</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6944em;"></span><span class="mord mathnormal">h</span></span></span></span></eq> 恰好等于真实剩余代价时，它基本只沿最优路径扩展。如果 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>h</mi></mrow><annotation encoding="application/x-tex">h</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6944em;"></span><span class="mord mathnormal">h</span></span></span></span></eq> 恒为 0，A* 就退化成 Dijkstra。如果 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>h</mi></mrow><annotation encoding="application/x-tex">h</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6944em;"></span><span class="mord mathnormal">h</span></span></span></span></eq> 高估了真实值，优先扩展的方向性更强，很多情况下确实更快，但也可能因此错过最优路径——&quot;更快&quot;不是普遍保证，取决于 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>h</mi></mrow><annotation encoding="application/x-tex">h</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6944em;"></span><span class="mord mathnormal">h</span></span></span></span></eq> 高估的程度和图的形态。</p>
+<p><strong>复杂度。</strong> 时间上，最坏情况仍与扩展的节点数相关，可写作 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>O</mi><mo stretchy="false">(</mo><mi>V</mi><mi>log</mi><mo>⁡</mo><mi>V</mi><mo>+</mo><mi>E</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">O(V \log V + E)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.0278em;">O</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.2222em;">V</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop">lo<span style="margin-right:0.0139em;">g</span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.2222em;">V</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.0576em;">E</span><span class="mclose">)</span></span></span></span></eq>，其中 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>log</mi><mo>⁡</mo><mi>V</mi></mrow><annotation encoding="application/x-tex">\log V</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mop">lo<span style="margin-right:0.0139em;">g</span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.2222em;">V</span></span></span></span></eq> 来自优先队列操作；若 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>h</mi></mrow><annotation encoding="application/x-tex">h</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6944em;"></span><span class="mord mathnormal">h</span></span></span></span></eq> 质量好，实际扩展的节点数远少于 Lee。空间上仍需保存开放集、<eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi></mrow><annotation encoding="application/x-tex">g</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.625em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.0359em;">g</span></span></span></span></eq> 值和前驱，量级与访问的节点数相当。相比 Lee 的普通队列，A* 每个节点多了 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi></mrow><annotation encoding="application/x-tex">g</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.625em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.0359em;">g</span></span></span></span></eq>、<eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi></mrow><annotation encoding="application/x-tex">f</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.1076em;">f</span></span></span></span></eq> 维护和优先队列操作的开销。</p>
+<p><strong>优点与局限。</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">优点</th>
+<th style="text-align:left">局限</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">搜索区域比 Lee 窄，通常快得多</td>
+<td style="text-align:left">需要优先队列，单节点操作开销更大</td>
+</tr>
+<tr>
+<td style="text-align:left"><eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>h</mi></mrow><annotation encoding="application/x-tex">h</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6944em;"></span><span class="mord mathnormal">h</span></span></span></span></eq> 可采纳时保持路径最优</td>
+<td style="text-align:left">效果高度依赖 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>h</mi></mrow><annotation encoding="application/x-tex">h</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6944em;"></span><span class="mord mathnormal">h</span></span></span></span></eq> 的质量</td>
+</tr>
+<tr>
+<td style="text-align:left">能直接处理不同边代价</td>
+<td style="text-align:left"><eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>h</mi></mrow><annotation encoding="application/x-tex">h</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6944em;"></span><span class="mord mathnormal">h</span></span></span></span></eq> 设计不当会损失速度或最优性</td>
+</tr>
+<tr>
+<td style="text-align:left">容易扩展障碍、层和过孔等约束</td>
+<td style="text-align:left">只解决两个端点之间的连接</td>
+</tr>
+</tbody>
+</table></div>
+<h4 id="sec-1-2-3">1.2.3 Hightower 线搜索（1969）<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h4>
+<p>Hightower 换了一种搜索的表示方式。它不逐格扩展，而是用<strong>线段</strong>作为搜索的基本单位：一条从某点出发、沿水平或垂直方向能一直走多远的那一段，就记成一条线段。</p>
+<p><strong>核心表示：用线段代替格点。</strong> Lee 和 A* 需要记录走过的每一个格子，一条长 100 格的直线就要记 100 个格子。Hightower 只记一条线段，存储量因此大幅下降。与之配套的两个概念是：</p>
+<ul>
+<li><strong>逃逸点（escape point）</strong>：一条线段两端遇到障碍或边界的位置，也就是这条线段的端点。</li>
+<li><strong>垂直扩展</strong>：从逃逸点出发，沿垂直于原线段的方向再长出一条新线段。</li>
+</ul>
+<p>整个搜索过程就是不断「从逃逸点长出新的垂直线段」，直到某条从起点侧长出的线段，与某条从终点侧长出的线段相交。</p>
+<p><strong>执行过程。</strong></p>
+<ol>
+<li>从起点 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi></mrow><annotation encoding="application/x-tex">S</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.0576em;">S</span></span></span></span></eq> 向水平和垂直两个方向各延伸一条线段，得到两条线段的端点作为逃逸点。</li>
+<li>对每个逃逸点，沿垂直方向延伸出一条新的线段。若新线段与已有线段重合，则不重复加入。</li>
+<li>对新产生的线段，再取它的逃逸点，继续长垂直方向的新线段。</li>
+<li>从终点 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi></mrow><annotation encoding="application/x-tex">T</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">T</span></span></span></span></eq> 同步做同样的扩展。</li>
+<li>一旦某条起点侧的线段与某条终点侧的线段相交，就把两条线段的路径拼起来，得到从 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi></mrow><annotation encoding="application/x-tex">S</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.0576em;">S</span></span></span></span></eq> 到 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi></mrow><annotation encoding="application/x-tex">T</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">T</span></span></span></span></eq> 的通路。</li>
+<li>如果没有新线段可以产生，两侧仍不相交，则报告无路径。</li>
+</ol>
+<p><strong>一个例子。</strong> 使用 7 列 × 5 行的网格，<code>S</code> 为起点，<code>T</code> 为终点，<code>█</code> 为障碍：</p>
+<pre><code class="language-text">      x=0  x=1  x=2  x=3  x=4  x=5  x=6
+y=0    ·    ·    ·    ·    ·    ·    ·
+y=1    ·    S    ·    █    ·    ·    ·
+y=2    ·    ·    ·    █    ·    ·    ·
+y=3    ·    █    █    █    ·    T    ·
+y=4    ·    ·    ·    ·    ·    ·    ·
+</code></pre>
+<p>从 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mo>=</mo><mo stretchy="false">(</mo><mn>1</mn><mo separator="true">,</mo><mn>1</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">S=(1,1)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.0576em;">S</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">1</span><span class="mclose">)</span></span></span></span></eq> 画十字：</p>
+<ul>
+<li>横向向左到 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>0</mn><mo separator="true">,</mo><mn>1</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(0,1)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">0</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">1</span><span class="mclose">)</span></span></span></span></eq> 遇边界，向右到 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>2</mn><mo separator="true">,</mo><mn>1</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(2,1)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">2</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">1</span><span class="mclose">)</span></span></span></span></eq> 遇障碍 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>3</mn><mo separator="true">,</mo><mn>1</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(3,1)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">3</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">1</span><span class="mclose">)</span></span></span></span></eq>，得到线段 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>0</mn><mo separator="true">,</mo><mn>1</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(0,1)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">0</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">1</span><span class="mclose">)</span></span></span></span></eq>–<eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>2</mn><mo separator="true">,</mo><mn>1</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(2,1)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">2</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">1</span><span class="mclose">)</span></span></span></span></eq>。</li>
+<li>纵向向上到 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>1</mn><mo separator="true">,</mo><mn>0</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(1,0)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">0</span><span class="mclose">)</span></span></span></span></eq> 遇边界，向下到 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>1</mn><mo separator="true">,</mo><mn>2</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(1,2)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">2</span><span class="mclose">)</span></span></span></span></eq> 遇障碍 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>1</mn><mo separator="true">,</mo><mn>3</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(1,3)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">3</span><span class="mclose">)</span></span></span></span></eq>，得到线段 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>1</mn><mo separator="true">,</mo><mn>0</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(1,0)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">0</span><span class="mclose">)</span></span></span></span></eq>–<eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>1</mn><mo separator="true">,</mo><mn>2</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(1,2)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">2</span><span class="mclose">)</span></span></span></span></eq>。</li>
+</ul>
+<p>这两条线段的端点即逃逸点：<eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>0</mn><mo separator="true">,</mo><mn>1</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(0,1)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">0</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">1</span><span class="mclose">)</span></span></span></span></eq>、<eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>2</mn><mo separator="true">,</mo><mn>1</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(2,1)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">2</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">1</span><span class="mclose">)</span></span></span></span></eq>、<eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>1</mn><mo separator="true">,</mo><mn>0</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(1,0)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">0</span><span class="mclose">)</span></span></span></span></eq>、<eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>1</mn><mo separator="true">,</mo><mn>2</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(1,2)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">2</span><span class="mclose">)</span></span></span></span></eq>。从这些逃逸点向垂直方向继续扩展：</p>
+<ul>
+<li>从 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>2</mn><mo separator="true">,</mo><mn>1</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(2,1)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">2</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">1</span><span class="mclose">)</span></span></span></span></eq> 纵向延伸，得到 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>2</mn><mo separator="true">,</mo><mn>0</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(2,0)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">2</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">0</span><span class="mclose">)</span></span></span></span></eq>–<eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>2</mn><mo separator="true">,</mo><mn>2</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(2,2)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">2</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">2</span><span class="mclose">)</span></span></span></span></eq>。</li>
+<li>从 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>1</mn><mo separator="true">,</mo><mn>2</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(1,2)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">2</span><span class="mclose">)</span></span></span></span></eq> 横向延伸，得到 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>0</mn><mo separator="true">,</mo><mn>2</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(0,2)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">0</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">2</span><span class="mclose">)</span></span></span></span></eq>–<eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>2</mn><mo separator="true">,</mo><mn>2</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(2,2)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">2</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">2</span><span class="mclose">)</span></span></span></span></eq>。</li>
+<li>从 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>1</mn><mo separator="true">,</mo><mn>0</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(1,0)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">0</span><span class="mclose">)</span></span></span></span></eq> 横向延伸，得到 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>0</mn><mo separator="true">,</mo><mn>0</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(0,0)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">0</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">0</span><span class="mclose">)</span></span></span></span></eq>–<eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>6</mn><mo separator="true">,</mo><mn>0</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(6,0)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">6</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">0</span><span class="mclose">)</span></span></span></span></eq>。</li>
+<li>从 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>0</mn><mo separator="true">,</mo><mn>1</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(0,1)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">0</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">1</span><span class="mclose">)</span></span></span></span></eq> 纵向延伸，得到 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>0</mn><mo separator="true">,</mo><mn>0</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(0,0)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">0</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">0</span><span class="mclose">)</span></span></span></span></eq>–<eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>0</mn><mo separator="true">,</mo><mn>4</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(0,4)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">0</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">4</span><span class="mclose">)</span></span></span></span></eq>。</li>
+</ul>
+<p>新线段又带来新的逃逸点，继续扩展：从 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>6</mn><mo separator="true">,</mo><mn>0</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(6,0)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">6</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">0</span><span class="mclose">)</span></span></span></span></eq> 纵向得到 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>6</mn><mo separator="true">,</mo><mn>0</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(6,0)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">6</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">0</span><span class="mclose">)</span></span></span></span></eq>–<eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>6</mn><mo separator="true">,</mo><mn>4</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(6,4)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">6</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">4</span><span class="mclose">)</span></span></span></span></eq>，从 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>0</mn><mo separator="true">,</mo><mn>4</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(0,4)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">0</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">4</span><span class="mclose">)</span></span></span></span></eq> 横向得到 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>0</mn><mo separator="true">,</mo><mn>4</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(0,4)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">0</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">4</span><span class="mclose">)</span></span></span></span></eq>–<eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>6</mn><mo separator="true">,</mo><mn>4</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(6,4)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">6</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">4</span><span class="mclose">)</span></span></span></span></eq>。</p>
+<p>同时从 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>=</mo><mo stretchy="false">(</mo><mn>5</mn><mo separator="true">,</mo><mn>3</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">T=(5,3)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.1389em;">T</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">5</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">3</span><span class="mclose">)</span></span></span></span></eq> 侧扩展：横向得到 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>4</mn><mo separator="true">,</mo><mn>3</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(4,3)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">4</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">3</span><span class="mclose">)</span></span></span></span></eq>–<eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>6</mn><mo separator="true">,</mo><mn>3</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(6,3)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">6</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">3</span><span class="mclose">)</span></span></span></span></eq>，纵向得到 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>5</mn><mo separator="true">,</mo><mn>0</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(5,0)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">5</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">0</span><span class="mclose">)</span></span></span></span></eq>–<eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>5</mn><mo separator="true">,</mo><mn>4</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(5,4)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">5</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">4</span><span class="mclose">)</span></span></span></span></eq>。</p>
+<p>两侧的线段在 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>5</mn><mo separator="true">,</mo><mn>0</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(5,0)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">5</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">0</span><span class="mclose">)</span></span></span></span></eq> 就已经相交：起点侧的横向线段 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>0</mn><mo separator="true">,</mo><mn>0</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(0,0)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">0</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">0</span><span class="mclose">)</span></span></span></span></eq>–<eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>6</mn><mo separator="true">,</mo><mn>0</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(6,0)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">6</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">0</span><span class="mclose">)</span></span></span></span></eq> 覆盖 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>5</mn><mo separator="true">,</mo><mn>0</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(5,0)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">5</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">0</span><span class="mclose">)</span></span></span></span></eq>，终点侧的纵向线段 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>5</mn><mo separator="true">,</mo><mn>0</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(5,0)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">5</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">0</span><span class="mclose">)</span></span></span></span></eq>–<eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>5</mn><mo separator="true">,</mo><mn>4</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(5,4)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">5</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">4</span><span class="mclose">)</span></span></span></span></eq> 的端点正是 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>5</mn><mo separator="true">,</mo><mn>0</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(5,0)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">5</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">0</span><span class="mclose">)</span></span></span></span></eq>。把两条线段拼起来，得到的路径是：</p>
+<pre><code class="language-text">(1,1) → (1,0) → (2,0) → (3,0) → (4,0) → (5,0) → (5,1) → (5,2) → (5,3)
+</code></pre>
+<p>共 8 步，正好是这个网格上最短的路径之一。</p>
+<p><strong>为什么它可能漏掉更优的路径。</strong> 上面这次搜索凑巧碰到了最短路径，但换一组障碍就可能不是。关键在于：新线段只从<strong>逃逸点（线段端点）<strong>向垂直方向生成。如果一条更优路径所需的拐弯点，恰好落在某条已有线段的</strong>中间</strong>而不是端点，那个位置就不会生出新的垂直线段，对应的路径也就无法被拼出来。</p>
+<p>例如，若从起点侧已经长出一条很长的横向线段 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>0</mn><mo separator="true">,</mo><mn>0</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(0,0)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">0</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">0</span><span class="mclose">)</span></span></span></span></eq>–<eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>6</mn><mo separator="true">,</mo><mn>0</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(6,0)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">6</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">0</span><span class="mclose">)</span></span></span></span></eq>，而某条更优路径需要在 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>=</mo><mn>4</mn></mrow><annotation encoding="application/x-tex">x=4</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.4306em;"></span><span class="mord mathnormal">x</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.6444em;"></span><span class="mord">4</span></span></span></span></eq> 这一列向下拐弯，那么 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mn>4</mn><mo separator="true">,</mo><mn>0</mn><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(4,0)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">4</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">0</span><span class="mclose">)</span></span></span></span></eq> 是这条线段的中间点，不是端点，<eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>=</mo><mn>4</mn></mrow><annotation encoding="application/x-tex">x=4</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.4306em;"></span><span class="mord mathnormal">x</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="katex-base"><span class="katex-strut" style="height:0.6444em;"></span><span class="mord">4</span></span></span></span></eq> 的纵向线段就不会被生成，这条路径因此排不进候选中。此时若两侧仍能通过其他线段相交，算法只是损失了最优性；若障碍布局更苛刻、两侧始终无法相交，算法会报告「无路径」，而通路其实存在。</p>
+<p>Lee 和 A* 逐格检查，不预设拐弯点必须位于线段端点，因此没有这一盲点。</p>
+<p>实现上的要点是判断「新线段是否已经出现过」，避免重复扩展；以及维护两侧线段集合的相交检测，通常借助线段坐标的范围判断来完成。</p>
+<p><strong>复杂度。</strong> 设搜索过程中产生的线段总数为 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>N</mi><mi>L</mi></msub></mrow><annotation encoding="application/x-tex">N_L</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.109em;">N</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3283em;"><span style="top:-2.55em;margin-left:-0.109em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">L</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span></eq>。每条线段只需存储两个端点，空间开销约为 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>O</mi><mo stretchy="false">(</mo><msub><mi>N</mi><mi>L</mi></msub><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">O(N_L)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.0278em;">O</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.109em;">N</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3283em;"><span style="top:-2.55em;margin-left:-0.109em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">L</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span></span></span></span></eq>，通常小于逐格搜索的 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>O</mi><mo stretchy="false">(</mo><mi>V</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">O(V)</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.0278em;">O</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.2222em;">V</span><span class="mclose">)</span></span></span></span></eq>。时间开销主要来自延伸线段、判断重合和相交检测，与 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>N</mi><mi>L</mi></msub></mrow><annotation encoding="application/x-tex">N_L</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.109em;">N</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3283em;"><span style="top:-2.55em;margin-left:-0.109em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">L</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span></eq> 及每条线段延伸时扫描的格子数相关。障碍稀疏、走线以长直线为主时，<eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>N</mi><mi>L</mi></msub></mrow><annotation encoding="application/x-tex">N_L</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.109em;">N</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3283em;"><span style="top:-2.55em;margin-left:-0.109em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">L</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span></eq> 很小，因而效率高；障碍密集、拐弯频繁时 <eq><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>N</mi><mi>L</mi></msub></mrow><annotation encoding="application/x-tex">N_L</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="katex-base"><span class="katex-strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.109em;">N</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3283em;"><span style="top:-2.55em;margin-left:-0.109em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="katex-sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">L</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span></eq> 上升，优势减弱，漏解的可能也随之增加。</p>
+<p><strong>优点与局限。</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">优点</th>
+<th style="text-align:left">局限</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">只存线段，内存占用通常小于逐格搜索</td>
+<td style="text-align:left">不保证找到通路，存在漏解</td>
+</tr>
+<tr>
+<td style="text-align:left">长直线区域扩展很快</td>
+<td style="text-align:left">不保证路径最短</td>
+</tr>
+<tr>
+<td style="text-align:left">线段表示天然贴合横竖走线</td>
+<td style="text-align:left">逃逸点与线段相交的判断比 BFS 复杂</td>
+</tr>
+<tr>
+<td style="text-align:left">在障碍稀疏、直线为主的区域效率高</td>
+<td style="text-align:left">障碍密集、频繁拐弯时优势消失</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="sec-1-3">1.3 多层网络：很多条网怎样不互相堵塞<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h3>
+<p>即使每条 net 单独都找到了很短的路，所有 net 合起来也可能挤爆同一条 G-cell 边。全局布线的难点因此不只是「找路径」，还包括「协调路径之间的资源竞争」。</p>
+<p>**Rip-up and reroute（拆线重布）**是一种迭代操作：先给网分配路径；统计哪些边超过容量；拆掉受拥塞影响的部分，再为这些网重新找路。它描述的是「发现冲突以后怎么改」，本身不限定具体寻路算法。</p>
+<p>**PathFinder（1995）**给这类协商提供了代价更新机制。容量暂时允许被超过；每轮中，超载边的当前代价上升，反复超载的边还积累历史惩罚。下一轮寻路时，受罚的边变得不那么有吸引力，部分网络会绕开。可把它理解成拥堵路段逐轮涨价：大家先上路，再根据拥堵重新选择。不同全局路由器会采用各自的代价公式、重布顺序和停止条件，不应把所有细节都等同于 PathFinder 原始实现。</p>
+<p>**四类算法怎样接起来：*<em>RSMT / FLUTE 给出一条多端 net 的分叉拓扑；Lee、A</em> 或迷宫搜索为拓扑中的线段寻找路径；PathFinder 式协商和 rip-up &amp; reroute 则在所有 nets 之间分配容量；层分配再把已确定的平面路径放到具体金属层上。前两项处理单网内部，第三项处理网与网之间的冲突，第四项处理网与层之间的资源分配。</p>
+<h3 id="sec-1-4">1.4 层分配：路径怎样安排到金属层<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h3>
+<p>（待补充。第 0 章已列出这条任务：将路径安排到不同金属层，兼顾过孔和容量，常用动态规划等方法。）</p>
+<h3 id="sec-1-5">1.5 完整路由器：从 FastRoute 到 2026<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h3>
+<p>下面几节按时间顺序介绍完整的全局布线器。前面四节讲的是路由器内部的四类基础算法，这里讲的是每一代工具如何把它们组装起来，并针对速度、三维资源、拥塞、时序和并行性逐步改造。</p>
+<h4 id="sec-1-5-1">1.5.1 2000 年代：FastRoute 把三类算法组装成路由器<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h4>
+<p>FastRoute（Pan、Chu，Iowa State，2006–2009）代表一类完整的全局路由流程：为每条网构造树，将树边用快速 pattern routing 或迷宫搜索接到网格上，再通过拥塞代价与迭代重布协调不同 nets。换句话说，FLUTE、迷宫搜索和拥塞协商不再是分散的教材算法，而是有数据结构、网顺序、容量模型和停止条件的完整程序。</p>
+<p><strong>它为什么重要？</strong> 真实芯片里的问题不是只给一条线找最短路，而是要处理海量多端网、资源容量和运行时间。FastRoute 的贡献在于把建树、路径搜索、拥塞处理整合为快速、可用于完整设计的 global router。FastRoute 后续版本继续改进质量与速度，例如 FastRoute 4.0 强调过孔最小化。</p>
+<p>**它与底层算法的关系：**FastRoute 不是 FLUTE 或 PathFinder 的同义词，也不是把这些经典方法淘汰掉的新基础算法；它是把建树、单网寻路和多网协调组合起来的工具。不同版本可替换组件或代价，但整体仍要完成这三项工作。</p>
+<h4 id="sec-1-5-2">1.5.2 2010 年代：NCTU-GR 与 SPRoute，改进重布与并行<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h4>
+<p><strong>NCTU-GR 2.0</strong>是 NTHU-Route 系列之后的重要全局布线器。它延续「为网找路—统计拥塞—调整代价—重新布线」的迭代结构，针对路径搜索和拥塞处理作工程与算法改进。其有界长度迷宫搜索在路径质量与搜索成本之间作限制；拥塞边的历史代价、拥塞区域识别和重布顺序也影响整体收敛。多端网仍然要构造树，单段路径仍然要由搜索算法实现。</p>
+<p><strong>SPRoute</strong>（2019）及 <strong>SPRoute 2.0</strong>（ASP-DAC 2022）关注并行化：把全局路由中可并发处理的部分安排到多线程或异构计算资源，同时处理网与网之间的竞争。并行不等于可以忽略拥塞；同一批网若争同一资源，仍需要冲突处理与后续协调。SPRoute 改的是整台路由器的执行方式，不是另创一套多端树或多网协商理论。</p>
+<h4 id="sec-1-5-3">1.5.3 2020–2023：CUGR 与 EDGE，直接处理三维布线资源<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h4>
+<p>传统的二维规划可能先决定平面走向，再把路径分配到不同金属层；这样的分步处理不容易充分利用层间资源，也可能低估过孔与详细布线的困难。</p>
+<p><strong>CUGR</strong>（DAC 2020，香港中文大学 Young 组）提出 detailed-routability-driven 的三维全局布线：直接在包含平面边和层间 via 边的三维路由空间里考虑走线，并使用概率资源模型估计哪些路径更可能被下游详细布线落实。其路径仍通过 pattern routing、三维迷宫等方式生成；多网资源竞争仍需协调。改变的是路由空间表达与容量模型，不是取消「多端网构树、路径搜索、多网协调」三项任务。</p>
+<p><strong>EDGE</strong>（DAC 2023；CUGR 2.0 的后续代码对应这条工作）把候选路径表示为有向无环图（DAG），再在图上选择和协调路径。直观地说，传统做法可能在搜索过程中只保留当前路径；DAG 做法把多种可选走法组织起来，便于后续全局选择。它改变了候选路径的表示和优化方式，仍然是在全局资源约束下给各网分配路线。</p>
+<h4 id="sec-1-5-4">1.5.4 2024：ISPD 大规模基准、InstantGR 与 HeLEM-GR<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h4>
+<p>ISPD 2024 将 GPU / ML-enhanced large-scale global routing 作为竞赛主题。公开赛题提供最大约 5000 万单元的基准，促使研究者集中处理大规模路由的吞吐、显存和质量。官方前三名为 Hippo（北京大学）、RL-Route（香港中文大学等）和 metaRoute（复旦大学等）。竞赛本身是基准与评测，不是某个新的底层算法。</p>
+<p>**InstantGR（ICCAD 2024）**针对大规模全局布线的运行时间，把路由工作映射到 GPU 并行执行。后续三维扩展加强分批和节点级并行，并处理层间转换。它主要改「同一套路径搜索与多网路由任务怎样并行跑」，而不是把多端连接或多网拥塞问题删掉。</p>
+<p>**HeLEM-GR（ICCAD 2024）**针对全局布线的拥塞代价更新，使用线性化指数乘子方法来调整资源价格，并在 GPU 上批量执行 L 形 / 3-bend 路径与层分配。摘要报告相对 ISPD 2024 竞赛前三名，质量分改善 4.8%–5.8%，速度提升 1.62–2.07 倍。它的重点是更新拥塞代价和计算并行化；路径仍在网格上生成，多网竞争仍通过迭代代价处理。</p>
+<h4 id="sec-1-5-5">1.5.5 2025–2026：GAP-LA、惩罚更新与并行分批<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h4>
+<p>ISPD 2025 将全局布线评价扩展到时序和功耗（详见第 3 章）。这一变化让过去容易被当作后处理的层分配与电阻权重，成为路由质量的一部分。</p>
+<p><strong>GAP-LA：把层分配作为主要优化对象。</strong> GAP-LA（Zhao、Guo、Lin 等，IEEE TCAD）把二维路径分配到金属层，同时考虑拥塞、过孔、时序与功耗，并利用 GPU 加速。它回答的是「已有平面路径应放在哪些层」，并不替代树构造和全局拥塞协商。摘要报告相对 ISPD 2025 冠军，WNS 改善 0.3%–9.9%，TNS 改善 2.0%–5.4%。</p>
+<p><strong>障碍感知与时序感知的树构造。</strong> ACM TODAES 2025 的 obstacle-avoiding global routing 在树生成阶段构造避障 RSMT，后续仍进行稀疏迷宫布线以进一步处理障碍与 overflow。DAC 2025 的 cost-distance Steiner tree 把几何距离与时序相关边代价纳入树构造，是时序约束全局布线的一项子程序。PAGR（IEEE Access 2025）则通过缩小三维网格来加速树构造。这些方法改的是「多端网的初始连接拓扑」，后续仍须分配路径和容量。</p>
+<p><strong>AlphaRoute：按拥塞状态调整 PathFinder 式惩罚。</strong> AlphaRoute（ICLAD 2026）在三维 Dijkstra 和自适应 PathFinder 框架上，用大语言模型在知识图谱约束内调整惩罚参数。模型调的是拥塞价格，不是直接替每条网一次性画完整布线。论文摘要报告在 ISPD 2025 的 MEMPOOL 设计上 overflow 降低 98.6%。</p>
+<p><strong>GANGR：学习如何组成并行批次。</strong> GANGR（DATE 2026）用 WGAN 改进全局路由器的 batching：哪些网可以放在同一批并行处理，哪些网的资源冲突较大、需要分开。它改变并行调度，不取代路径搜索或拥塞协商。摘要报告在 ISPD 2024 基准上运行时间最多降低 40%，质量差异为 0.002%。</p>
+<p><strong>NEATRouter：单线路径搜索的局部替换。</strong> VLSI-SoC 2024 的 NEATRouter 用 NEAT 神经网络处理两端路径搜索。它是少数直接替换单线路径搜索器的工作，但多端网的树构造和全局资源分配仍由路由流程的其他部分处理，因此不能等同于完整全局路由器被神经网络整体取代。</p>
+<h4 id="sec-1-5-6">1.5.6 全局布线器发展脉络小结<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h4>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">时期 / 工具</th>
+<th style="text-align:left">主要推进</th>
+<th style="text-align:left">对三类基础问题的影响</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">Lee、A*、Hightower；RSMT / FLUTE；PathFinder</td>
+<td style="text-align:left">建立单路径、多端树、多网协商的基本解法</td>
+<td style="text-align:left">形成三类基础算法</td>
+</tr>
+<tr>
+<td style="text-align:left">FastRoute（2006–2009）</td>
+<td style="text-align:left">将建树、路径搜索和拥塞协商整合成完整、高效的全局路由器</td>
+<td style="text-align:left">把三类算法组装成工程流程</td>
+</tr>
+<tr>
+<td style="text-align:left">NCTU-GR / SPRoute（2010s–2022）</td>
+<td style="text-align:left">改进迷宫搜索、历史代价、重布策略与并行执行</td>
+<td style="text-align:left">主要改搜索实现和多网协调</td>
+</tr>
+<tr>
+<td style="text-align:left">CUGR / EDGE（2020–2023）</td>
+<td style="text-align:left">面向详细可布线性的三维路由空间、概率资源模型与 DAG 候选路径</td>
+<td style="text-align:left">改路由空间和候选路径表示</td>
+</tr>
+<tr>
+<td style="text-align:left">InstantGR / HeLEM-GR（2024）</td>
+<td style="text-align:left">GPU 大规模并行、拥塞代价更新</td>
+<td style="text-align:left">改计算执行与多网代价</td>
+</tr>
+<tr>
+<td style="text-align:left">GAP-LA、障碍/时序感知树、AlphaRoute、GANGR（2025–2026）</td>
+<td style="text-align:left">层分配、树代价、罚分调节、并行分批</td>
+<td style="text-align:left">在三类基础问题内部强化特定子步骤</td>
+</tr>
+</tbody>
+</table></div>
+<p>因此，讲 FastRoute、CUGR、InstantGR 时，讨论的是「完整路由器如何组合和执行算法」；讲 Lee、FLUTE、PathFinder 时，讨论的是「路由器内部具体用什么办法解决哪类子问题」。</p>
+<hr>
+<h2 id="sec-2">2. 详细布线器<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h2>
+<p>详细布线接收全局布线给出的 route guide，把粗粒度的“经过这些区域”落实为具体轨道、金属线和过孔。它可以按下面的顺序理解：先确认引脚能不能接，再分配轨道，然后搜索具体路径，最后反复检查和修复 DRC 违例。</p>
+<h3 id="sec-2-1">2.1 TritonRoute 与 Dr. CU：完整流程<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h3>
+<p>ISPD 2018 与 2019 的详细布线竞赛推动了现代网格化详细布线器的发展。TritonRoute（核心论文 2021，OpenROAD 中持续维护）将流程组织为：引脚接入分析、轨道分配、初始详细布线、搜索与修复、DRC 引擎。Dr. CU 使用稀疏网格和分区上的最短路，同样通过迭代修复消除违例。</p>
+<p>详细布线的核心搜索仍然可以看作两点或“一个引脚接入已有连接树”的路径搜索，但搜索对象已经从全局布线的 G-cell 变成具体轨道、过孔位置和局部几何。TritonRoute-WXL 的仓库仍描述这条流程，本次没有检索到 2024–2026 年的同名新论文。</p>
+<h3 id="sec-2-2">2.2 引脚接入：先保证“有地方接”<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h3>
+<p>引脚接不进轨道时，后面的路径搜索没有可行起点。先进节点中，标准单元引脚狭窄、密集，pin access 本身就可能决定一个局部区域是否可布。因此 2023–2025 年的研究把它做成了独立模块。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">工作</th>
+<th style="text-align:left">年份与场合</th>
+<th style="text-align:left">内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">FastPass</td>
+<td style="text-align:left">TCAD 2024（2023 年 12 月在线）</td>
+<td style="text-align:left">生成合法接入路径，用增量 SAT 选择方案，再交给 Dr. CU</td>
+</tr>
+<tr>
+<td style="text-align:left">Routing-intent aware pin access</td>
+<td style="text-align:left">ISQED 2024</td>
+<td style="text-align:left">按线网的走线意图预选标准单元接入点</td>
+</tr>
+<tr>
+<td style="text-align:left">Pin pattern re-generation</td>
+<td style="text-align:left">DAC 2024</td>
+<td style="text-align:left">布线过程中重生成引脚图案，避免预先固定的图案占用走线资源</td>
+</tr>
+<tr>
+<td style="text-align:left">On-grid pin access 单元库</td>
+<td style="text-align:left">ISCAS 2024</td>
+<td style="text-align:left">在单元库阶段保证格点可接入</td>
+</tr>
+<tr>
+<td style="text-align:left">CFET 单元库</td>
+<td style="text-align:left">ISPD 2025</td>
+<td style="text-align:left">用 DRC 感知的查找表约束合法接入</td>
+</tr>
+<tr>
+<td style="text-align:left">Via pillar 与引脚协同</td>
+<td style="text-align:left">ASP-DAC 2025 等</td>
+<td style="text-align:left">插入 via pillar 时避开相邻引脚</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="sec-2-3">2.3 轨道分配：先决定“走哪条车道”<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h3>
+<p>全局布线只说明某条网大致经过哪些区域和金属层；详细布线还要把它放到具体的 track 上。轨道分配通常要同时考虑：同一轨道能否容纳多条线、不同层之间如何通过过孔连接、线段之间是否满足间距和端点规则，以及后续详细搜索是否还有空间。</p>
+<p>因此，轨道分配不是简单地“找一条空轨道”，而是一个带资源竞争的组合问题。常见方法包括整数规划、网络流、候选轨道选择和启发式分配。IPAG（ASP-DAC 2024）属于“先生成候选路径，再用整数规划选择”的代表：整数规划负责从候选中挑组合，但候选仍由队列式拆线重布产生。</p>
+<h3 id="sec-2-4">2.4 具体路径搜索：在轨道和过孔上落地<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h3>
+<p>轨道确定后，需要在具体的轨道、过孔和局部障碍组成的细网格上搜索路径。这里仍然会用 A*、Dijkstra、迷宫搜索及其变体，但代价和约束比全局布线更具体：除了路径长度，还要考虑过孔数量、优先走向、线宽与间距、端点规则、pin access 和当前 DRC 状态。</p>
+<p>因此，同一个 A* 名称在两个阶段的含义不同：全局布线中，它主要搜索“经过哪些 G-cell 和金属层”；详细布线中，它搜索“具体使用哪些轨道和过孔”。它们都在做路径搜索，但搜索图的粒度和代价模型不同。</p>
+<h3 id="sec-2-5">2.5 搜索与修复：把初始结果修到合法<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h3>
+<p>初始布线通常允许暂时保留部分违例，随后进入 Search and Repair：检查 DRC，定位违例，拆掉受影响的局部路径，再用更新后的障碍和代价重新布线，直到违例归零或达到工具的停止条件。</p>
+<p>近年的工作主要调整“怎么修”：</p>
+<ul>
+<li><strong>窗口选择。</strong> DAC 2025 的强化学习窗口选择工作决定 rip-up 窗口的位置和大小，流程仍是初始布线加拆线重布，并与 TritonRoute 的固定网格窗口对比。</li>
+<li><strong>线网顺序。</strong> IJCAI 2025 的 TREND 用 Transformer 强化学习决定拆线重布时的线网顺序，实现基于定制的 TritonRoute。</li>
+<li><strong>代价权重。</strong> DATE 2026 的离线强化学习（Khan、Rovinski）用保守 Q-learning 选择每轮路径搜索的违例代价，摘要明确对象仍是 iterative pathfinding。ISPD 2019 基准上平均加速 1.56 倍，最高 3.01 倍，DRV 不少于基线。同一方向的后续工作用 LSTM 预测迭代代价，并写明不改动核心搜索。</li>
+<li><strong>候选路径选择。</strong> IPAG 的整数规划是在候选路径中做组合选择，并没有取消搜索与修复。</li>
+<li><strong>硬件加速。</strong> DATE 2026 的 RouterAcc 用 FPGA 加速既有详细布线，对比对象为 TritonRoute 和 Dr. CU 2.0；MLCAD 2025 的 Dr. Guide 预先为每条网生成 route guide，再交给迷宫布线。</li>
+</ul>
+<h3 id="sec-2-6">2.6 详细布线的算法链条<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h3>
+<pre><code class="language-text">全局布线的 route guide
+          ↓
+Pin Access：确认引脚有合法接入方式
+          ↓
+Track Assignment：分配具体轨道
+          ↓
+A* / Dijkstra / 迷宫搜索：生成初始几何路径
+          ↓
+DRC 检查
+          ↓
+Search and Repair：拆线、更新代价、重新布线
+          ↓
+DRC = 0 的具体金属线与过孔
+</code></pre>
+<p>所以详细布线里的算法不是另起一套与全局布线无关的体系，而是把相同的路径搜索思想放到更细的轨道和工艺规则上，再通过搜索与修复处理大量离散约束。</p>
+<hr>
+<h2 id="sec-3">3. 评价标准<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h2>
+<h3 id="sec-3-1">3.1 2024：线长与拥塞<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h3>
+<p>ISPD 2024 的可见指标是总线长、过孔、overflow 和运行时间。输入经过简化，不含时序库和约束。竞赛说明指出，这种记分不能区分金属层电阻、过孔延迟和耦合电容。</p>
+<h3 id="sec-3-2">3.2 2025：时序、功耗与拥塞<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h3>
+<p>ISPD 2025 赛题改为 Performance-Driven Large Scale Global Routing。每个例子同时提供 LEF、DEF、LIB、SDC，以及一套简化的容量与线网文件。评估把全局布线结果装入 OpenROAD，报告时序、功耗和拥塞。赛题说明中的优先级是 overflow，然后 timing，然后 power。运行时间以相对中位数的方式进入缩放分，幅度有上限。</p>
+<p>官方结果前三名仍是 Hippo（北京大学）、RL-Route（香港中文大学等）和 It's MyRoute!!!!!（复旦大学等）。</p>
+<p>ISPD 2026 的官方竞赛题目改为布局后的缓冲器插入与尺寸优化。布线工作继续出现在会议论文中，不再作为该年赛题。</p>
+<h3 id="sec-3-3">3.3 评价变化带出的算法<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h3>
+<p>第 1.5 节的 GAP-LA 和 gradient-guided RC weighting 是这一记分方式下的层分配与权重设置。全局布线的输出要能在 OpenROAD 里算出 WNS、TNS 和功耗，层和电阻就不能只按 overflow 最小来选。</p>
+<hr>
+<h2 id="sec-4">4. 布线信息进入上游<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h2>
+<p>布线质量的估计被用于布局，插入位置和输出对象不同。</p>
+<p><strong>预测。</strong> VeriHGN（KDD 2026）在详细布线之前用异构图预测拥塞，以减少布线迭代。PGR-DRC（2025）在全局布线之前用无监督方法标出可能的 DRC 热点。</p>
+<p><strong>布局目标。</strong> RoutePlacer（KDD 2024）用 RouteGNN 作为可布线性的可微近似，也可作为外挂布线器的插件；监督来自布线结果。DAC 2025 的 Differentiable Net-Moving 在可布线性驱动的全局布局中使用动量膨胀、泊松拥塞和虚拟单元挪网。DAC 2025 的 DCO-3D 用孪生网络预测三维布线后的拥塞，再在布局期把单元摊到 x、y、z；签核布线留在后续。ASP-DAC 2026 的 C3PO 在全局布局中同时优化时序、可布线性和线长；会议页已核，正文 PDF 未打开。ICCAD 2026 的 PPAPlace 用全局布线之后的标签训练代理，梯度回到单元坐标。</p>
+<p><strong>交替调用。</strong> DAC 2025 的 RUPlace 在 ADMM 框架中交替执行全局布线和增量布局，其后仍有合法化与详细布局。输出是布局。</p>
+<p>Shift-Left 综述（2025，arXiv:2509.14551）将布线保持为流程中的独立阶段，讨论功耗、热和电迁移在布线阶段更早进入目标。</p>
+<hr>
+<h2 id="sec-5">5. 三维、光子与封装<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h2>
+<p><strong>三维芯片。</strong> ICCAD 2025 的 H3D 针对「先做二维布线、再把过孔合法化」的伪三维流程，改为在原生三维网格上做全局布线，并用动态规划处理 HBT。摘要报告线长降低 12%，HBT 降低 25%。问题陈述仍将布线分为全局与详细两段。Open3DBench 的开源流程依次为分区、布局、时序优化和三维布线。</p>
+<p><strong>光子与光电。</strong> ISPD 2025 的 LiDAR 做大规模光子芯片的曲线波导详细布线，使用网格上的 A*、自适应交叉插入和拥塞感知的线网顺序，目标是无 DRV 的版图。后续工作把光子波导与片上金属线放进同一条规划、轨道分配和详细布线流程。</p>
+<p><strong>先进封装。</strong> ISPD 2026 的 any-angle die-to-die routing 处理非正交走线、不对称引脚行、过孔、泪滴和屏蔽预留。官方摘要报告在密集情形下可布通。</p>
+<p>模拟版图的布线（如 GLSVLSI 2026 的 GeoRoute）对象不是数字标准单元网格，不并入上面三条工具线。</p>
+<hr>
+<h2 id="sub-1">文献表<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h2>
+<h3 id="sub-2">全局布线<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">工作</th>
+<th style="text-align:left">年份</th>
+<th style="text-align:left">场合</th>
+<th style="text-align:left">链接</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">ISPD 2024 GPU/ML 大规模全局布线竞赛邀请文</td>
+<td style="text-align:left">2024</td>
+<td style="text-align:left">ISPD</td>
+<td style="text-align:left"><a href="https://doi.org/10.1145/3626184.3639693">https://doi.org/10.1145/3626184.3639693</a></td>
+</tr>
+<tr>
+<td style="text-align:left">ISPD 2024 竞赛结果</td>
+<td style="text-align:left">2024</td>
+<td style="text-align:left">ISPD</td>
+<td style="text-align:left"><a href="https://ispd.cc/contests/24/index.html">https://ispd.cc/contests/24/index.html</a></td>
+</tr>
+<tr>
+<td style="text-align:left">InstantGR</td>
+<td style="text-align:left">2024</td>
+<td style="text-align:left">ICCAD</td>
+<td style="text-align:left"><a href="https://doi.org/10.1145/3676536.3676787">https://doi.org/10.1145/3676536.3676787</a></td>
+</tr>
+<tr>
+<td style="text-align:left">InstantGR 三维扩展</td>
+<td style="text-align:left">2025–2026</td>
+<td style="text-align:left">IEEE TCAD</td>
+<td style="text-align:left"><a href="https://doi.org/10.1109/TCAD.2025.3573685">https://doi.org/10.1109/TCAD.2025.3573685</a></td>
+</tr>
+<tr>
+<td style="text-align:left">HeLEM-GR</td>
+<td style="text-align:left">2024</td>
+<td style="text-align:left">ICCAD</td>
+<td style="text-align:left"><a href="https://doi.org/10.1145/3676536.3676650">https://doi.org/10.1145/3676536.3676650</a></td>
+</tr>
+<tr>
+<td style="text-align:left">ISPD 2025 性能驱动大规模全局布线竞赛邀请文</td>
+<td style="text-align:left">2025</td>
+<td style="text-align:left">ISPD</td>
+<td style="text-align:left"><a href="https://doi.org/10.1145/3698364.3715706">https://doi.org/10.1145/3698364.3715706</a></td>
+</tr>
+<tr>
+<td style="text-align:left">ISPD 2025 赛题</td>
+<td style="text-align:left">2025</td>
+<td style="text-align:left">ISPD</td>
+<td style="text-align:left"><a href="https://ispd.cc/contests/25/index.html">https://ispd.cc/contests/25/index.html</a></td>
+</tr>
+<tr>
+<td style="text-align:left">GAP-LA</td>
+<td style="text-align:left">2025–2026</td>
+<td style="text-align:left">IEEE TCAD</td>
+<td style="text-align:left"><a href="https://arxiv.org/abs/2507.13375">https://arxiv.org/abs/2507.13375</a></td>
+</tr>
+<tr>
+<td style="text-align:left">障碍感知全局布线</td>
+<td style="text-align:left">2025</td>
+<td style="text-align:left">ACM TODAES</td>
+<td style="text-align:left"><a href="https://doi.org/10.1145/3769005">https://doi.org/10.1145/3769005</a></td>
+</tr>
+<tr>
+<td style="text-align:left">Cost-distance Steiner trees</td>
+<td style="text-align:left">2025</td>
+<td style="text-align:left">DAC</td>
+<td style="text-align:left"><a href="https://doi.org/10.1109/DAC63849.2025.11132669">https://doi.org/10.1109/DAC63849.2025.11132669</a></td>
+</tr>
+<tr>
+<td style="text-align:left">PAGR</td>
+<td style="text-align:left">2025</td>
+<td style="text-align:left">IEEE Access</td>
+<td style="text-align:left"><a href="https://doi.org/10.1109/ACCESS.2025.3526722">https://doi.org/10.1109/ACCESS.2025.3526722</a></td>
+</tr>
+<tr>
+<td style="text-align:left">GANGR</td>
+<td style="text-align:left">2026</td>
+<td style="text-align:left">DATE</td>
+<td style="text-align:left"><a href="https://arxiv.org/abs/2511.17665">https://arxiv.org/abs/2511.17665</a></td>
+</tr>
+<tr>
+<td style="text-align:left">AlphaRoute</td>
+<td style="text-align:left">2026</td>
+<td style="text-align:left">IEEE ICLAD</td>
+<td style="text-align:left"><a href="https://arxiv.org/abs/2607.19768">https://arxiv.org/abs/2607.19768</a></td>
+</tr>
+<tr>
+<td style="text-align:left">Gradient-guided RC weighting</td>
+<td style="text-align:left">2026</td>
+<td style="text-align:left">ISPD</td>
+<td style="text-align:left"><a href="https://doi.org/10.1145/3764386.3779588">https://doi.org/10.1145/3764386.3779588</a></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="sub-3">详细布线与引脚接入<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">工作</th>
+<th style="text-align:left">年份</th>
+<th style="text-align:left">场合</th>
+<th style="text-align:left">链接</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">FastPass</td>
+<td style="text-align:left">2024</td>
+<td style="text-align:left">IEEE TCAD</td>
+<td style="text-align:left"><a href="https://ieeexplore.ieee.org/document/10373411">https://ieeexplore.ieee.org/document/10373411</a></td>
+</tr>
+<tr>
+<td style="text-align:left">Pin pattern re-generation</td>
+<td style="text-align:left">2024</td>
+<td style="text-align:left">DAC</td>
+<td style="text-align:left"><a href="https://doi.org/10.1145/3649329.3655918">https://doi.org/10.1145/3649329.3655918</a></td>
+</tr>
+<tr>
+<td style="text-align:left">IPAG</td>
+<td style="text-align:left">2024</td>
+<td style="text-align:left">ASP-DAC</td>
+<td style="text-align:left"><a href="https://doi.org/10.1109/ASP-DAC58780.2024.10473934">https://doi.org/10.1109/ASP-DAC58780.2024.10473934</a></td>
+</tr>
+<tr>
+<td style="text-align:left">RL 窗口选择</td>
+<td style="text-align:left">2025</td>
+<td style="text-align:left">DAC</td>
+<td style="text-align:left"><a href="https://ieeexplore.ieee.org/document/11132699">https://ieeexplore.ieee.org/document/11132699</a></td>
+</tr>
+<tr>
+<td style="text-align:left">TREND</td>
+<td style="text-align:left">2025</td>
+<td style="text-align:left">IJCAI</td>
+<td style="text-align:left"><a href="https://www.ijcai.org/proceedings/2025/1055.pdf">https://www.ijcai.org/proceedings/2025/1055.pdf</a></td>
+</tr>
+<tr>
+<td style="text-align:left">CFET 单元库引脚接入</td>
+<td style="text-align:left">2025</td>
+<td style="text-align:left">ISPD</td>
+<td style="text-align:left"><a href="https://doi.org/10.1145/3698364.3705348">https://doi.org/10.1145/3698364.3705348</a></td>
+</tr>
+<tr>
+<td style="text-align:left">离线强化学习详细布线</td>
+<td style="text-align:left">2026</td>
+<td style="text-align:left">DATE</td>
+<td style="text-align:left"><a href="https://doi.org/10.23919/DATE69613.2026.11539594">https://doi.org/10.23919/DATE69613.2026.11539594</a></td>
+</tr>
+<tr>
+<td style="text-align:left">LiDAR</td>
+<td style="text-align:left">2025</td>
+<td style="text-align:left">ISPD</td>
+<td style="text-align:left"><a href="https://doi.org/10.1145/3698364.3705355">https://doi.org/10.1145/3698364.3705355</a></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="sub-4">上游、三维与封装<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th style="text-align:left">工作</th>
+<th style="text-align:left">年份</th>
+<th style="text-align:left">场合</th>
+<th style="text-align:left">链接</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">RoutePlacer</td>
+<td style="text-align:left">2024</td>
+<td style="text-align:left">KDD</td>
+<td style="text-align:left"><a href="https://doi.org/10.1145/3637528.3671895">https://doi.org/10.1145/3637528.3671895</a></td>
+</tr>
+<tr>
+<td style="text-align:left">RUPlace</td>
+<td style="text-align:left">2025</td>
+<td style="text-align:left">DAC</td>
+<td style="text-align:left"><a href="https://yibolin.com/publications/papers/PLACE_DAC2025_Chen.pdf">https://yibolin.com/publications/papers/PLACE_DAC2025_Chen.pdf</a></td>
+</tr>
+<tr>
+<td style="text-align:left">Differentiable Net-Moving</td>
+<td style="text-align:left">2025</td>
+<td style="text-align:left">DAC</td>
+<td style="text-align:left"><a href="https://doi.org/10.1109/DAC63849.2025.11133117">https://doi.org/10.1109/DAC63849.2025.11133117</a></td>
+</tr>
+<tr>
+<td style="text-align:left">DCO-3D</td>
+<td style="text-align:left">2025</td>
+<td style="text-align:left">DAC</td>
+<td style="text-align:left"><a href="https://gtcad.gatech.edu/www/papers/Hsiao-DAC25-1.pdf">https://gtcad.gatech.edu/www/papers/Hsiao-DAC25-1.pdf</a></td>
+</tr>
+<tr>
+<td style="text-align:left">C3PO</td>
+<td style="text-align:left">2026</td>
+<td style="text-align:left">ASP-DAC</td>
+<td style="text-align:left"><a href="https://research.nvidia.com/labs/electronic-design-automation/publication/lu2026aspdac">https://research.nvidia.com/labs/electronic-design-automation/publication/lu2026aspdac</a></td>
+</tr>
+<tr>
+<td style="text-align:left">VeriHGN</td>
+<td style="text-align:left">2026</td>
+<td style="text-align:left">KDD</td>
+<td style="text-align:left"><a href="https://arxiv.org/abs/2603.11075">https://arxiv.org/abs/2603.11075</a></td>
+</tr>
+<tr>
+<td style="text-align:left">H3D</td>
+<td style="text-align:left">2025</td>
+<td style="text-align:left">ICCAD</td>
+<td style="text-align:left">见 ICCAD 2025 论文集</td>
+</tr>
+<tr>
+<td style="text-align:left">Shift-Left 综述</td>
+<td style="text-align:left">2025</td>
+<td style="text-align:left">arXiv</td>
+<td style="text-align:left"><a href="https://arxiv.org/abs/2509.14551">https://arxiv.org/abs/2509.14551</a></td>
+</tr>
+<tr>
+<td style="text-align:left">Any-angle die-to-die routing</td>
+<td style="text-align:left">2026</td>
+<td style="text-align:left">ISPD</td>
+<td style="text-align:left"><a href="https://doi.org/10.1145/3764386.3779587">https://doi.org/10.1145/3764386.3779587</a></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="sub-5">尚未作为定论引用的条目<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h3>
+<p>GR-Evolve（<a href="https://arxiv.org/abs/2604.22234">https://arxiv.org/abs/2604.22234</a>）由作者标为 ICCAD 2026 在审，未计入上表。IEEE 10895082、Springer 2026 全流程 AI 综述，以及一篇 ScienceDirect 上的三维可布线性论文，本次未能打开正文。</p>
+
+</main>
+</div>
+<button class="backtop" id="backtop" type="button" aria-label="回到顶部">↑</button>
+<script>
+(function () {
+  'use strict';
+
+  var root = document.documentElement;
+
+  /* ---------- 主题 ---------- */
+  var THEME_KEY = 'prdoc-theme';
+  function readTheme() {
+    try { return localStorage.getItem(THEME_KEY); } catch (e) { return null; }
+  }
+  function applyTheme(t) {
+    root.setAttribute('data-theme', t);
+    var btn = document.getElementById('themeBtn');
+    if (btn) {
+      btn.textContent = t === 'dark' ? '☀' : '☾';
+      btn.setAttribute('aria-label', t === 'dark' ? '切换到浅色主题' : '切换到深色主题');
+    }
+  }
+  var saved = readTheme();
+  var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme(saved || (prefersDark ? 'dark' : 'light'));
+  var themeBtn = document.getElementById('themeBtn');
+  if (themeBtn) {
+    themeBtn.addEventListener('click', function () {
+      var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+      try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+    });
+  }
+
+  /* ---------- 移动端抽屉 ---------- */
+  var sidebar = document.getElementById('sidebar');
+  var mask = document.getElementById('mask');
+  var menuBtn = document.getElementById('menuBtn');
+  function closeDrawer() {
+    if (sidebar) sidebar.classList.remove('open');
+    if (mask) mask.classList.remove('show');
+  }
+  if (menuBtn) {
+    menuBtn.addEventListener('click', function () {
+      var open = sidebar.classList.toggle('open');
+      if (mask) mask.classList.toggle('show', open);
+    });
+  }
+  if (mask) mask.addEventListener('click', closeDrawer);
+
+  /* ---------- 目录：折叠 ---------- */
+  var groups = Array.prototype.slice.call(document.querySelectorAll('.nav-group'));
+  groups.forEach(function (g) {
+    var chev = g.querySelector(':scope > .nav-row > .chev');
+    if (!chev) return;
+    chev.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      g.classList.toggle('collapsed');
+    });
+  });
+
+  var expandAll = document.getElementById('expandAll');
+  var collapseAll = document.getElementById('collapseAll');
+  if (expandAll) expandAll.addEventListener('click', function () {
+    groups.forEach(function (g) { g.classList.remove('collapsed'); });
+  });
+  if (collapseAll) collapseAll.addEventListener('click', function () {
+    groups.forEach(function (g) { g.classList.add('collapsed'); });
+  });
+
+  /* ---------- 目录：搜索过滤 ---------- */
+  var navSearch = document.getElementById('navSearch');
+  var navEmpty = document.getElementById('navEmpty');
+  function filterNav() {
+    var q = (navSearch.value || '').trim().toLowerCase();
+    var anyVisible = false;
+    groups.forEach(function (g) {
+      var links = Array.prototype.slice.call(g.querySelectorAll('.nav-link'));
+      var groupHit = false;
+      links.forEach(function (a) {
+        var hit = !q || a.textContent.toLowerCase().indexOf(q) !== -1;
+        a.classList.toggle('hidden', !hit);
+        if (hit) groupHit = true;
+      });
+      g.classList.toggle('hidden', !groupHit);
+      if (groupHit) {
+        anyVisible = true;
+        if (q) g.classList.remove('collapsed');
+      }
+    });
+    var topLinks = Array.prototype.slice.call(document.querySelectorAll('.nav > .nav-link'));
+    topLinks.forEach(function (a) {
+      var hit = !q || a.textContent.toLowerCase().indexOf(q) !== -1;
+      a.classList.toggle('hidden', !hit);
+      if (hit) anyVisible = true;
+    });
+    if (navEmpty) navEmpty.style.display = anyVisible ? 'none' : 'block';
+  }
+  if (navSearch) {
+    navSearch.addEventListener('input', filterNav);
+    navSearch.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { navSearch.value = ''; filterNav(); }
+    });
+  }
+
+  /* ---------- 滚动：进度条 / 回顶 / 高亮 ---------- */
+  var progress = document.getElementById('progress');
+  var backtop = document.getElementById('backtop');
+  var headings = Array.prototype.slice.call(document.querySelectorAll('.doc h1[id], .doc h2[id], .doc h3[id], .doc h4[id]'));
+  var linkMap = {};
+  Array.prototype.slice.call(document.querySelectorAll('.nav-link[href^="#"]')).forEach(function (a) {
+    linkMap[a.getAttribute('href').slice(1)] = a;
+  });
+
+  var activeId = null;
+  function ensureVisible(link) {
+    if (!sidebar || !link) return;
+    var lr = link.getBoundingClientRect();
+    var sr = sidebar.getBoundingClientRect();
+    if (lr.top < sr.top + 8 || lr.bottom > sr.bottom - 8) {
+      link.scrollIntoView({ block: 'center' });
+    }
+  }
+  function setActive(id) {
+    if (id === activeId) return;
+    if (activeId && linkMap[activeId]) linkMap[activeId].classList.remove('active');
+    activeId = id;
+    var link = linkMap[id];
+    if (!link) return;
+    link.classList.add('active');
+    var g = link.closest('.nav-group');
+    if (g) g.classList.remove('collapsed');
+    ensureVisible(link);
+  }
+
+  var ticking = false;
+  function onScroll() {
+    if (ticking) return;
+    ticking = true;
+    window.requestAnimationFrame(function () {
+      ticking = false;
+      var y = window.scrollY || window.pageYOffset;
+      var h = document.documentElement.scrollHeight - window.innerHeight;
+
+      if (progress) progress.style.width = (h > 0 ? Math.min(100, (y / h) * 100) : 0) + '%';
+      if (backtop) backtop.classList.toggle('show', y > 700);
+
+      var offset = 90;
+      var current = headings.length ? headings[0].id : null;
+      for (var i = 0; i < headings.length; i++) {
+        if (headings[i].getBoundingClientRect().top <= offset) current = headings[i].id;
+        else break;
+      }
+      if (current) setActive(current);
+    });
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll);
+  onScroll();
+
+  if (backtop) backtop.addEventListener('click', function () {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  /* ---------- 目录点击（移动端自动收起） ---------- */
+  Array.prototype.slice.call(document.querySelectorAll('.nav a.nav-link')).forEach(function (a) {
+    a.addEventListener('click', function () {
+      if (window.innerWidth <= 1080) closeDrawer();
+    });
+  });
+
+  /* ---------- 代码块复制 ---------- */
+  Array.prototype.slice.call(document.querySelectorAll('.doc pre')).forEach(function (pre) {
+    var btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.type = 'button';
+    btn.textContent = '复制';
+    btn.addEventListener('click', function () {
+      var code = pre.querySelector('code');
+      var text = code ? code.innerText : pre.innerText;
+      var done = function () {
+        btn.textContent = '已复制';
+        btn.classList.add('done');
+        setTimeout(function () { btn.textContent = '复制'; btn.classList.remove('done'); }, 1400);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function () { fallback(text, done); });
+      } else { fallback(text, done); }
+    });
+    pre.appendChild(btn);
+  });
+  function fallback(text, done) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+})();
+
+</script>
+</body>
+</html>
