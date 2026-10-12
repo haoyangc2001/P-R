@@ -375,7 +375,6 @@ eqn{display:block;margin:1.05em 0}
 <div class="nav-group"><div class="nav-row"><a class="nav-link lv2" href="#sec-0">0. 布线任务概述</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children">
 <a class="nav-link lv3" href="#sec-0-1">0.1 全局布线：规划整体路线</a>
 <a class="nav-link lv3" href="#sec-0-2">0.2 详细布线：落实具体连线</a>
-<a class="nav-link lv3" href="#sec-0-3">0.3 两个阶段怎样衔接</a>
 </div></div>
 <div class="nav-group collapsed"><div class="nav-row"><a class="nav-link lv2" href="#sec-1">1. 全局布线：从基本算法到现代路由器</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children">
 <a class="nav-link lv3" href="#sec-1-1">1.1 多端连接：一条网怎样连成树</a>
@@ -426,6 +425,8 @@ eqn{display:block;margin:1.05em 0}
 <header class="doc-hero"><h1 id="top">布线算法调研<a class="h-anchor" href="#top" aria-label="本节链接">#</a></h1></header>
 <h2 id="sec-0">0. 布线任务概述<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h2>
 <p>布线通常分为两个阶段：<strong>全局布线先规划整体路线，详细布线再落实具体金属线和过孔。</strong></p>
+<p>打个比方：<strong>全局布线像「先确定走哪些街区」</strong>——把芯片划成粗网格，规划每条网大致经过哪几片区域、上哪几层，主要看整体拥不拥塞。<strong>详细布线像「再确定走哪条车道、在哪里转弯」</strong>——把粗路线落到具体的轨道、金属线和过孔上，还得满足一系列制造规则。</p>
+<p>如果详细布线发现某处实在走不通，就把问题反馈给上游，调整路线后再布。</p>
 <h3 id="sec-0-1">0.1 全局布线：规划整体路线<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h3>
 <p>全局布线把芯片划成较粗的网格，规划每条网经过哪些区域、使用哪些金属层，并协调各条网对布线资源的使用。它主要关注整体是否拥塞，以及线长、时序等指标，而不确定每根金属线的精确位置。</p>
 <div class="table-wrap"><table>
@@ -455,6 +456,7 @@ eqn{display:block;margin:1.05em 0}
 </tbody>
 </table></div>
 <p>**输出：**粗粒度路径、金属层信息和布线引导区域（route guide），供详细布线使用。</p>
+<p>需要留意的是，<strong>A*、Dijkstra 这类路径搜索算法在两个阶段都会用到</strong>，区别在搜索的粒度：全局布线在 G-cell 网格上寻找粗粒度路径，详细布线在具体轨道上寻找精确几何。</p>
 <h3 id="sec-0-2">0.2 详细布线：落实具体连线<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h3>
 <p>详细布线根据全局规划，确定金属线具体走哪条轨道、在哪放置过孔，以及如何接到单元引脚。除了完成连接，还要满足线宽、间距、过孔等制造规则，并尽量控制线长、过孔数量和时序代价。</p>
 <div class="table-wrap"><table>
@@ -484,8 +486,6 @@ eqn{display:block;margin:1.05em 0}
 </tbody>
 </table></div>
 <p>**输出：**具体金属线和过孔的几何形状与位置，供后续寄生参数提取、物理验证和签核使用。</p>
-<h3 id="sec-0-3">0.3 两个阶段怎样衔接<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h3>
-<p>可以把全局布线理解为「先确定走哪些街区」，详细布线理解为「再确定走哪条车道、在哪里转弯」。如果详细布线发现某处实在走不通，就把问题反馈给上游，调整路线后再布。</p>
 <hr>
 <h2 id="sec-1">1. 全局布线：从基本算法到现代路由器<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h2>
 <h3 id="sec-1-1">1.1 多端连接：一条网怎样连成树<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h3>
