@@ -457,9 +457,7 @@ eqn{display:block;margin:1.05em 0}
 </tbody>
 </table></div>
 <p>**输出：**粗粒度路径、金属层信息和布线引导区域（route guide），供详细布线使用。</p>
-<p>下图把这四项任务按执行顺序串起来：一条网先由 RSMT / FLUTE 决定分叉拓扑，再为各段寻找粗粒度路径，然后与其他网协调布线资源，最后分配到具体金属层。前三步处理&quot;这条网自己怎么连&quot;，后两步处理&quot;它和别的网、和层资源怎样互不冲突&quot;。</p>
 <p><img src="assets/global-routing-tasks.png" alt="全局布线的四项任务流水线：分叉拓扑（RSMT/FLUTE）→ 粗粒度路径（Lee/A*/Hightower）→ 资源协调（PathFinder/拆线重布）→ 层分配（动态规划），前两步处理单条网内部连接，后两步处理网与网、网与资源之间的冲突" loading="lazy" decoding="async"></p>
-<p>需要留意的是，<strong>A*、Dijkstra 这类路径搜索算法在两个阶段都会用到</strong>，区别在搜索的粒度：全局布线在 G-cell 网格上寻找粗粒度路径，详细布线在具体轨道上寻找精确几何。</p>
 <h3 id="sec-0-2">0.2 详细布线：落实具体连线<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h3>
 <p>详细布线根据全局规划，确定金属线具体走哪条轨道、在哪放置过孔，以及如何接到单元引脚。除了完成连接，还要满足线宽、间距、过孔等制造规则，并尽量控制线长、过孔数量和时序代价。</p>
 <div class="table-wrap"><table>
@@ -489,6 +487,7 @@ eqn{display:block;margin:1.05em 0}
 </tbody>
 </table></div>
 <p>**输出：**具体金属线和过孔的几何形状与位置，供后续寄生参数提取、物理验证和签核使用。</p>
+<p>需要留意的是，<strong>A*、Dijkstra 这类路径搜索算法在两个阶段都会用到</strong>，区别在搜索的粒度：全局布线在 G-cell 网格上寻找粗粒度路径，详细布线在具体轨道上寻找精确几何。</p>
 <hr>
 <h2 id="sec-1">1. 全局布线：从基本算法到现代路由器<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h2>
 <h3 id="sec-1-1">1.1 多端连接：一条网怎样连成树<a class="h-anchor" href="#null" aria-label="本节链接">#</a></h3>
