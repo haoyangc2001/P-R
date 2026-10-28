@@ -373,10 +373,10 @@ eqn{display:block;margin:1.05em 0}
 <button class="mini-btn" id="expandAll" type="button">展开</button>
 <button class="mini-btn" id="collapseAll" type="button">折叠</button>
 </div>
-<nav class="nav"><a class="nav-link lv1" href="#top">📄 电路时序优化</a><div class="nav-group"><div class="nav-row"><a class="nav-link lv2" href="#section-1">第一章：问题定义——时序优化在解决什么事情</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children"><a class="nav-link lv3" href="#section-2">1.1 要解决的核心问题</a><a class="nav-link lv3" href="#section-3">1.2 优化目标与边界</a><a class="nav-link lv3" href="#section-4">1.3 时序分析与时序优化的关系</a></div></div><div class="nav-group"><div class="nav-row"><a class="nav-link lv2" href="#section-5">第二章：优化手段——可以通过哪些调整改善时序</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children"><a class="nav-link lv3" href="#section-6">2.1 多种手段可以配合使用</a></div></div><div class="nav-group"><div class="nav-row"><a class="nav-link lv2" href="#section-7">第三章：方法组织概览——这些手段怎样被安排和调用</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children"><a class="nav-link lv3" href="#section-8">3.1 三层分别负责什么</a><a class="nav-link lv3" href="#section-9">3.2 用一个例子把三层串起来</a><a class="nav-link lv3" href="#section-10">3.3 从流程到算法：哪些有共同套路，哪些由工具决定</a></div></div><div class="nav-group"><div class="nav-row"><a class="nav-link lv2" href="#section-11">第四章：OpenROAD 的时序优化流程与案例</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children"><a class="nav-link lv3" href="#section-12">4.1 整个流程在哪些阶段调整时序</a><a class="nav-link lv3" href="#section-13">4.2 不同阶段，用的是同一套算法吗</a><a class="nav-link lv3" href="#section-14">4.3 为什么需要在多个阶段反复优化</a><a class="nav-link lv3" href="#section-15">4.4 案例的位置：有了布局信息后，怎样修一条慢路径</a><a class="nav-link lv3" href="#section-16">4.5 输入电路：完整连接与共享负载</a><a class="nav-link lv3" href="#section-17">4.6 优化前：不只一条路径存在问题</a><a class="nav-link lv3" href="#section-18">4.7 这轮优化怎样进行</a><a class="nav-link lv3" href="#section-19">4.8 多种方法先用哪个</a><a class="nav-link lv3" href="#section-20">4.9 为什么移除缓冲器，还要增强驱动</a><a class="nav-link lv3" href="#section-21">4.10 优化后：电路和结果发生了什么变化</a></div></div><div class="nav-group"><div class="nav-row"><a class="nav-link lv2" href="#section-22">参考资料</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children"></div></div><div class="nav-empty" id="navEmpty">没有匹配的条目</div></nav>
+<nav class="nav"><a class="nav-link lv1" href="#top">📄 电路时序优化</a><div class="nav-group"><div class="nav-row"><a class="nav-link lv2" href="#section-1">第一章：问题定义——时序优化在解决什么事情</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children"><a class="nav-link lv3" href="#section-2">1.1 要解决的核心问题</a><a class="nav-link lv3" href="#section-3">1.2 优化目标与边界</a><a class="nav-link lv3" href="#section-4">1.3 时序分析与时序优化的关系</a></div></div><div class="nav-group"><div class="nav-row"><a class="nav-link lv2" href="#section-5">第二章：优化手段——可以通过哪些调整改善时序</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children"><a class="nav-link lv3" href="#section-6">2.1 多种手段可以配合使用</a></div></div><div class="nav-group"><div class="nav-row"><a class="nav-link lv2" href="#section-7">第三章：方法组织概览——这些手段怎样被安排和调用</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children"><a class="nav-link lv3" href="#section-8">3.1 三层分别负责什么</a><a class="nav-link lv3" href="#section-9">3.2 用一个例子把三层串起来</a><a class="nav-link lv3" href="#section-10">3.3 从流程到算法：哪些有共同套路，哪些由工具决定</a><a class="nav-link lv4" href="#section-11">第一层：流程安排有相似的骨架，但优化节点可以不同</a><a class="nav-link lv4" href="#section-12">第二层：操作没有统一顺序，需要根据问题安排</a><a class="nav-link lv4" href="#section-13">第三层：要解决的问题相近，具体算法可以不同</a></div></div><div class="nav-group"><div class="nav-row"><a class="nav-link lv2" href="#section-14">第四章：OpenROAD 的时序优化流程与案例</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children"><a class="nav-link lv3" href="#section-15">4.1 整个流程在哪些阶段调整时序</a><a class="nav-link lv3" href="#section-16">4.2 不同阶段，用的是同一套算法吗</a><a class="nav-link lv3" href="#section-17">4.3 为什么需要在多个阶段反复优化</a><a class="nav-link lv3" href="#section-18">4.4 案例条件：基于布局信息的 setup 优化</a><a class="nav-link lv3" href="#section-19">4.5 电路结构：缓冲链与共享负载</a><a class="nav-link lv3" href="#section-20">4.6 优化目标：消除四个端点的 setup 违例</a><a class="nav-link lv3" href="#section-21">4.7 优化过程：修改与时序评价交替进行</a><a class="nav-link lv3" href="#section-22">4.8 操作策略：按序尝试，按结果保留</a><a class="nav-link lv3" href="#section-23">4.9 电路调整：减少串联级数，增强发射端驱动</a><a class="nav-link lv3" href="#section-24">4.10 优化结果：时序改善，面积同时减小</a></div></div><div class="nav-group"><div class="nav-row"><a class="nav-link lv2" href="#section-25">参考资料</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children"></div></div><div class="nav-empty" id="navEmpty">没有匹配的条目</div></nav>
 </aside>
 <div class="mask" id="mask"></div>
-<main class="doc" id="doc"><header class="doc-hero"><h1 id="top">电路时序优化：从问题到实现<a class="h-anchor" href="#top" aria-label="本节链接">#</a></h1><blockquote><p>问题定义、常见手段与三层组织方式，以及 OpenROAD 的完整流程和 setup 修复案例。</p></blockquote></header><h2 id="section-1">第一章：问题定义——时序优化在解决什么事情<a class="h-anchor" href="#section-1" aria-label="本节链接">#</a></h2>
+<main class="doc" id="doc"><header class="doc-hero"><h1 id="top">电路时序优化：从问题到实现</h1><blockquote><p>问题定义、常见手段与三层组织方式，以及 OpenROAD 的完整流程和 setup 修复案例。</p></blockquote></header><h2 id="section-1">第一章：问题定义——时序优化在解决什么事情<a class="h-anchor" href="#section-1" aria-label="本节链接">#</a></h2>
 <h3 id="section-2">1.1 要解决的核心问题<a class="h-anchor" href="#section-2" aria-label="本节链接">#</a></h3>
 <p>电路连接正确，并不意味着在给定的时钟频率下就一定能正确工作。数据经过逻辑门计算、沿连线传递，都需要时间；寄存器则按照时钟规定的时刻采样。</p>
 <p><strong>时序优化要做的，就是调整电路，让数据在该到的时候到，并在采样前后保持稳定。</strong> 对常见的寄存器间路径，主要关注以下问题：</p>
@@ -574,10 +574,10 @@ eqn{display:block;margin:1.05em 0}
 <p>其中，“什么时候安排这轮优化”属于流程问题；“为什么先尝试缓冲”属于策略问题；“缓冲器到底怎么选、怎么放”属于具体算法问题。</p>
 <h3 id="section-10">3.3 从流程到算法：哪些有共同套路，哪些由工具决定<a class="h-anchor" href="#section-10" aria-label="本节链接">#</a></h3>
 <p>不同 EDA 工具没有一套必须照搬的完整优化顺序。<strong>共同的是“分析问题、尝试修改、重新评价”的基本过程；具体在哪个阶段做、怎样选手段、怎样求出方案，则需要分别设计。</strong> 按前面的三层，可以依次理解。</p>
-<h4>第一层：流程安排有相似的骨架，但优化节点可以不同</h4>
+<h4 id="section-11">第一层：流程安排有相似的骨架，但优化节点可以不同<a class="h-anchor" href="#section-11" aria-label="本节链接">#</a></h4>
 <p>综合、布局、时钟树和布线提供的信息逐步完善，因此各工具通常都会在多个关键节点关注时序。不过，有的工具把布局和时序优化交错进行，有的把综合与物理实现结合得更紧，也可以安排额外的局部修复。</p>
 <p>所以，看到一种工具的阶段安排，不能直接把它当成所有工具的标准流程。还要区分：某阶段只是检查了时序，还是实际修改了设计。</p>
-<h4>第二层：操作没有统一顺序，需要根据问题安排</h4>
+<h4 id="section-12">第二层：操作没有统一顺序，需要根据问题安排<a class="h-anchor" href="#section-12" aria-label="本节链接">#</a></h4>
 <p>在已经确定的优化节点内，策略要决定先处理哪条路径、先用哪种手段，以及什么时候停止。常见方式如下，可以混合使用。</p>
 <div class="table-wrap"><table>
 <thead>
@@ -607,7 +607,7 @@ eqn{display:block;margin:1.05em 0}
 </table></div>
 <p>同样是路径太慢，可能因为计算级数太多，也可能因为负载大或连线长。适合优先尝试的手段自然不同。即使是同一个工具，不同阶段、配置和设计状态，也可能采用不同的安排。</p>
 <p>“先修 setup，再修 hold”是 OpenROAD 等实现采用的一种策略，但不是所有工具必须照搬的数学定律；也可以有交替修复或同时考虑多种约束的方法。</p>
-<h4>第三层：要解决的问题相近，具体算法可以不同</h4>
+<h4 id="section-13">第三层：要解决的问题相近，具体算法可以不同<a class="h-anchor" href="#section-13" aria-label="本节链接">#</a></h4>
 <p>决定使用“门尺寸优化”之后，还要计算哪些门换大、换成哪个版本。决定插缓冲器之后，还要计算位置、数量和尺寸。这些问题有共同的研究基础，但可以用不同的搜索、估计和比较方法求解。</p>
 <p><strong>操作名字相同，不代表底层实现相同。</strong> 两个工具都能插缓冲器，却可能使用不同的候选位置、收益估计、搜索范围和停止条件；它们也可以借鉴同一种经典算法，再加入各自的工程改进。</p>
 <div class="table-wrap"><table>
@@ -638,10 +638,10 @@ eqn{display:block;margin:1.05em 0}
 </table></div>
 <p>公开资料也反映了这种差异：OpenROAD 允许配置 setup 修复的操作顺序；Cadence Innovus 将布局与时钟树建立前的优化交错进行；Synopsys IC Compiler II 强调时钟和数据路径协同优化。这些是公开确认的组织方式，不代表已经知道商业工具内部每一步的精确实现。</p>
 <p>因此，介绍具体案例时，需要说明它是哪种工具、哪个阶段和哪些条件下的一种做法，而不把局部经验推广为通用规则。</p>
-<h2 id="section-11">第四章：OpenROAD 的时序优化流程与案例<a class="h-anchor" href="#section-11" aria-label="本节链接">#</a></h2>
+<h2 id="section-14">第四章：OpenROAD 的时序优化流程与案例<a class="h-anchor" href="#section-14" aria-label="本节链接">#</a></h2>
 <p>OpenROAD 的完整设计流程会在多个阶段关注时序：先选择和调整电路实现，再结合位置、时钟树和连线信息继续优化。<strong>不是每个阶段都单独修一次时序，也不是等到布线完成后才开始处理。</strong></p>
 <p>这里的完整流程由 OpenROAD-flow-scripts 组织，其中逻辑综合使用 Yosys／ABC，主要物理设计使用 OpenROAD。以下默认安排来自所引用的固定版本，具体项目可以调整。</p>
-<h3 id="section-12">4.1 整个流程在哪些阶段调整时序<a class="h-anchor" href="#section-12" aria-label="本节链接">#</a></h3>
+<h3 id="section-15">4.1 整个流程在哪些阶段调整时序<a class="h-anchor" href="#section-15" aria-label="本节链接">#</a></h3>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -709,7 +709,7 @@ eqn{display:block;margin:1.05em 0}
 </tbody>
 </table></div>
 <p>“修电气问题”指改善过大的负载、过慢的信号变化等情况。它可能使路径变快，<strong>但不等于已经解决所有 setup／hold 违例</strong>。同样，生成一份时序报告，只是检查，不代表工具已经修改了电路。</p>
-<h3 id="section-13">4.2 不同阶段，用的是同一套算法吗<a class="h-anchor" href="#section-13" aria-label="本节链接">#</a></h3>
+<h3 id="section-16">4.2 不同阶段，用的是同一套算法吗<a class="h-anchor" href="#section-16" aria-label="本节链接">#</a></h3>
 <p><strong>不完全一样：有的阶段用自己的主要算法，有的阶段会复用同一个修复模块。即使复用了模块，任务、允许的操作和判断依据也可能不同。</strong></p>
 <div class="table-wrap"><table>
 <thead>
@@ -749,7 +749,7 @@ eqn{display:block;margin:1.05em 0}
 </table></div>
 <p>例如，布局规划时只安排一组受限的 setup 操作；时钟树建立后，普通修复依次处理 setup 和 hold；初步布线后，还会依据新的连线估计，额外尝试改善最差路径。不能仅凭入口名字相同，就认定内部工作完全相同。</p>
 <p><strong>这更像多次使用同一个工具箱：工具可以复用，但每次要修的问题、允许拿出的工具和判断结果的依据不一样。</strong> 后面的案例展示其中一次 setup 修复，不代表所有阶段都会照着它的操作顺序执行。</p>
-<h3 id="section-14">4.3 为什么需要在多个阶段反复优化<a class="h-anchor" href="#section-14" aria-label="本节链接">#</a></h3>
+<h3 id="section-17">4.3 为什么需要在多个阶段反复优化<a class="h-anchor" href="#section-17" aria-label="本节链接">#</a></h3>
 <p>越往后，工具掌握的实际信息越多：</p>
 <pre class="explain-diagram">综合时：知道电路用什么逻辑和单元实现
     ↓
@@ -763,148 +763,173 @@ eqn{display:block;margin:1.05em 0}
 </pre>
 <p>前面判断能及时到达的数据，后面可能因为连线绕远或时钟关系变化而不再满足要求。因此，后续阶段要重新检查，必要时继续修改。</p>
 <p><strong>“检查”和“修改”也不是每次都成对发生。</strong> 如果已经满足要求，可以继续推进；如果还存在问题，则需要寻找允许的调整方式。详细布线后若要修改单元或连接，还必须更新相关位置、重新布线并再次检查，不能只改网表就结束。</p>
-<h3 id="section-15">4.4 案例的位置：有了布局信息后，怎样修一条慢路径<a class="h-anchor" href="#section-15" aria-label="本节链接">#</a></h3>
-<p>OpenROAD 官方测试 <code>repair_setup1</code> 展示了一轮具体的 setup 修复。输入已经给定单元位置，工具根据位置估计连线延迟，再尝试修改电路。</p>
+<h3 id="section-18">4.4 案例条件：基于布局信息的 setup 优化<a class="h-anchor" href="#section-18" aria-label="本节链接">#</a></h3>
+<p>OpenROAD 的 <code>repair_setup1</code> 电路采用 Nangate45 单元库，时钟周期为 <strong>0.3 ns</strong>。优化在已经给定单元位置的条件下进行：根据位置估算连线延迟，调整单元和连接，使数据满足建立时间要求。</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
   <th>条件</th>
-  <th>这个案例的情况</th>
+  <th>设置</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-  <td>单元与连接</td>
-  <td>已经确定，直接读取输入文件</td>
+  <td>电路实现</td>
+  <td>单元类型、连接关系和位置已经给定</td>
 </tr>
 <tr>
-  <td>单元位置</td>
-  <td>已经给定，不在本测试中重新完成整个布局过程</td>
+  <td>连线模型</td>
+  <td>根据布局估算电阻、电容，尚未实际布线</td>
 </tr>
 <tr>
-  <td>连线延迟</td>
-  <td>根据位置估算，尚未实际布线</td>
-</tr>
-<tr>
-  <td>时钟</td>
-  <td>使用理想时钟，没有建立真实时钟树</td>
+  <td>时钟模型</td>
+  <td>理想时钟，未建立实际时钟树</td>
 </tr>
 <tr>
   <td>优化目标</td>
-  <td>修复 setup，即数据到达过晚的问题</td>
+  <td>修复 setup 违例，即数据到达过晚的问题</td>
 </tr>
 </tbody>
 </table></div>
-<p>它接近“已有位置、尚未建立时钟树时进行修复”的条件，但本身是独立功能测试，<strong>不能直接当成完整流程中某个阶段的默认执行结果</strong>。同一套修复功能也能在其他阶段使用，只是输入信息和配置不同。</p>
-<blockquote>
-<p>案例数字来自官方测试的预期输出，不是独立复现实测。输入和实现链接固定到同一版本。输出记录了最终改动和时序结果，没有逐步列出全部尝试历史。</p>
-</blockquote>
-<h3 id="section-16">4.5 输入电路：完整连接与共享负载<a class="h-anchor" href="#section-16" aria-label="本节链接">#</a></h3>
-<p>整个测试结构包含 <strong>12 个寄存器和 5 个缓冲器</strong>。橙色部分是报告详细展开的最差路径；旁边的数据分支也会影响发射端的负载。</p>
+<p>这是一轮布线前的局部时序优化。优化对象是已有电路，主要调整单元选择和缓冲结构。</p>
+<h3 id="section-19">4.5 电路结构：缓冲链与共享负载<a class="h-anchor" href="#section-19" aria-label="本节链接">#</a></h3>
+<p>电路包含 <strong>12 个寄存器和 5 个缓冲器</strong>。发射寄存器 <code>r1</code> 通过五级缓冲器连接 <code>r2</code>，同时直接驱动 <code>r3</code>～<code>r12</code> 的数据输入。</p>
 <figure class="circuit"><div class="diagram-scroll"><svg viewBox="0 0 1030 510" role="img" aria-labelledby="circuit-title" xmlns="http://www.w3.org/2000/svg"><title id="circuit-title">完整数据连接：r1驱动五级缓冲链及r3至r12十个并联负载，时钟连接另行标明</title><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#748396"/></marker></defs><g class="node focus"><rect x="20" y="44" width="110" height="58" rx="9"/><text x="75.0" y="68" text-anchor="middle">r1</text><text class="sub" x="75.0" y="87" text-anchor="middle">DFF_X1 · Q</text></g><g class="node focus"><rect x="220" y="44" width="105" height="58" rx="9"/><text x="272.5" y="68" text-anchor="middle">u1</text><text class="sub" x="272.5" y="87" text-anchor="middle">BUF_X1</text></g><path class="wire" d="M 130 73 H 220" marker-end="url(#arrow)"/><g class="node focus"><rect x="350" y="44" width="105" height="58" rx="9"/><text x="402.5" y="68" text-anchor="middle">u2</text><text class="sub" x="402.5" y="87" text-anchor="middle">BUF_X1</text></g><path class="wire" d="M 325 73 H 350" marker-end="url(#arrow)"/><g class="node focus"><rect x="480" y="44" width="105" height="58" rx="9"/><text x="532.5" y="68" text-anchor="middle">u3</text><text class="sub" x="532.5" y="87" text-anchor="middle">BUF_X1</text></g><path class="wire" d="M 455 73 H 480" marker-end="url(#arrow)"/><g class="node focus"><rect x="610" y="44" width="105" height="58" rx="9"/><text x="662.5" y="68" text-anchor="middle">u4</text><text class="sub" x="662.5" y="87" text-anchor="middle">BUF_X1</text></g><path class="wire" d="M 585 73 H 610" marker-end="url(#arrow)"/><g class="node focus"><rect x="740" y="44" width="105" height="58" rx="9"/><text x="792.5" y="68" text-anchor="middle">u5</text><text class="sub" x="792.5" y="87" text-anchor="middle">BUF_X1</text></g><path class="wire" d="M 715 73 H 740" marker-end="url(#arrow)"/><g class="node focus"><rect x="885" y="44" width="110" height="58" rx="9"/><text x="940.0" y="68" text-anchor="middle">r2</text><text class="sub" x="940.0" y="87" text-anchor="middle">DFF_X1 · D</text></g><path class="wire" d="M 845 73 H 885" marker-end="url(#arrow)"/><path class="wire" d="M 170 73 V 365 M 170 190 H 865 M 170 365 H 865"/><g class="node clocked"><rect x="220" y="220" width="125" height="58" rx="9"/><text x="282.5" y="244" text-anchor="middle">r3</text><text class="sub" x="282.5" y="263" text-anchor="middle">DFF_X1 · D</text></g><path class="wire" d="M 282.5 190 V 220" marker-end="url(#arrow)"/><g class="node clocked"><rect x="365" y="220" width="125" height="58" rx="9"/><text x="427.5" y="244" text-anchor="middle">r4</text><text class="sub" x="427.5" y="263" text-anchor="middle">DFF_X1 · D</text></g><path class="wire" d="M 427.5 190 V 220" marker-end="url(#arrow)"/><g class="node clocked"><rect x="510" y="220" width="125" height="58" rx="9"/><text x="572.5" y="244" text-anchor="middle">r5</text><text class="sub" x="572.5" y="263" text-anchor="middle">DFF_X1 · D</text></g><path class="wire" d="M 572.5 190 V 220" marker-end="url(#arrow)"/><g class="node clocked"><rect x="655" y="220" width="125" height="58" rx="9"/><text x="717.5" y="244" text-anchor="middle">r6</text><text class="sub" x="717.5" y="263" text-anchor="middle">DFF_X1 · D</text></g><path class="wire" d="M 717.5 190 V 220" marker-end="url(#arrow)"/><g class="node clocked"><rect x="800" y="220" width="125" height="58" rx="9"/><text x="862.5" y="244" text-anchor="middle">r7</text><text class="sub" x="862.5" y="263" text-anchor="middle">DFF_X1 · D</text></g><path class="wire" d="M 862.5 190 V 220" marker-end="url(#arrow)"/><g class="node unclocked"><rect x="220" y="395" width="125" height="58" rx="9"/><text x="282.5" y="419" text-anchor="middle">r8</text><text class="sub" x="282.5" y="438" text-anchor="middle">DFF_X1 · D</text></g><path class="wire" d="M 282.5 365 V 395" marker-end="url(#arrow)"/><g class="node unclocked"><rect x="365" y="395" width="125" height="58" rx="9"/><text x="427.5" y="419" text-anchor="middle">r9</text><text class="sub" x="427.5" y="438" text-anchor="middle">DFF_X1 · D</text></g><path class="wire" d="M 427.5 365 V 395" marker-end="url(#arrow)"/><g class="node unclocked"><rect x="510" y="395" width="125" height="58" rx="9"/><text x="572.5" y="419" text-anchor="middle">r10</text><text class="sub" x="572.5" y="438" text-anchor="middle">DFF_X1 · D</text></g><path class="wire" d="M 572.5 365 V 395" marker-end="url(#arrow)"/><g class="node unclocked"><rect x="655" y="395" width="125" height="58" rx="9"/><text x="717.5" y="419" text-anchor="middle">r11</text><text class="sub" x="717.5" y="438" text-anchor="middle">DFF_X1 · D</text></g><path class="wire" d="M 717.5 365 V 395" marker-end="url(#arrow)"/><g class="node unclocked"><rect x="800" y="395" width="125" height="58" rx="9"/><text x="862.5" y="419" text-anchor="middle">r12</text><text class="sub" x="862.5" y="438" text-anchor="middle">DFF_X1 · D</text></g><path class="wire" d="M 862.5 365 V 395" marker-end="url(#arrow)"/><text class="label" x="25" y="161">共享网络 r1q</text><text class="label" x="225" y="305">r3–r7：CK 连接 clk</text><text class="label" x="225" y="480">r8–r12：CK 未连接；D 引脚仍形成负载</text></svg></div><figcaption>数据连接示意 · 橙色为最差路径 · 灰色虚线框为 CK 未连接的负载 · 图中距离不代表物理位置</figcaption></figure>
-<p>发射寄存器 <code>r1</code> 一方面通过五级缓冲器连接 <code>r2</code>，另一方面直接连接 <code>r3</code>～<code>r12</code> 的数据输入。因此，修改 <code>r1</code> 的驱动能力，可能同时影响多个分支；改变缓冲链的负载，也可能影响这些分支共享的驱动端。</p>
-<p>时钟连接也要区分：</p>
-<ul>
-<li><code>r1</code>～<code>r7</code> 接收同一个时钟。</li>
-<li><code>r8</code>～<code>r12</code> 没有连接时钟，但数据输入仍接在网络上，形成真实负载。</li>
-</ul>
-<p><strong>这是人为构造的局部测试，不是引脚全部完整连接的产品电路。</strong> 图中没有叠加时钟和电源线，线的长短也不代表实际位置。原始连接文本重复列出了一次 <code>r3</code> 的输入，图中按同一个物理引脚只画一次。</p>
-<p>测试时钟周期为 <strong>0.3 ns</strong>。五个缓冲器初始都采用较小驱动版本，发射寄存器也使用较小驱动版本。缓冲器是否多余，不能只数级数，需要检查删掉后前级能否承担新的负载。</p>
-<h3 id="section-17">4.6 优化前：不只一条路径存在问题<a class="h-anchor" href="#section-17" aria-label="本节链接">#</a></h3>
-<p>官方日志报告，优化前共有 <strong>4 个接收端点存在 setup 违例</strong>，这一轮计划处理全部四个。它们属于同一个电路，不是四个独立电路。</p>
-<p>一个端点可以有多条到达路径，所以“四个违例端点”不表示恰好只有四条违例路径。官方输出只展开了最差的 <code>r1 → r2</code>，没有逐个提供其余三个端点的名字和数据。</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
-  <th>优化前的指标</th>
-  <th style="text-align:right">结果</th>
-  <th>怎么理解</th>
+  <th>电路部分</th>
+  <th>连接与作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>缓冲链</td>
+  <td><code>r1 → u1 → u2 → u3 → u4 → u5 → r2</code>，构成最差 setup 路径</td>
+</tr>
+<tr>
+  <td>并联分支</td>
+  <td><code>r3</code>～<code>r12</code> 的数据输入与 <code>u1</code> 共享 <code>r1</code> 的输出，增加驱动负载</td>
+</tr>
+<tr>
+  <td>时钟连接</td>
+  <td><code>r1</code>～<code>r7</code> 接收同一时钟；<code>r8</code>～<code>r12</code> 的时钟引脚未连接，其数据输入仍形成负载</td>
+</tr>
+</tbody>
+</table></div>
+<p>初始寄存器均为 <code>DFF_X1</code>，缓冲器均为 <code>BUF_X1</code>。图中省略时钟和电源线，连接长度不代表实际距离。</p>
+<p><strong>共享负载使各分支相互影响。</strong> 增强 <code>r1</code> 的驱动能力会影响多个分支；移除缓冲器后，前级需要驱动的连线与负载也会改变。因此，减少缓冲级数必须与驱动能力一起考虑。</p>
+<h3 id="section-20">4.6 优化目标：消除四个端点的 setup 违例<a class="h-anchor" href="#section-20" aria-label="本节链接">#</a></h3>
+<p>优化前共有 <strong>4 个接收端点存在 setup 违例</strong>，其中最差路径为 <code>r1 → 缓冲链 → r2</code>。数据要求在 <strong>0.252 ns</strong> 前到达，实际到达时间为 <strong>0.585 ns</strong>，晚了约 <strong>0.333 ns</strong>。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+  <th>指标</th>
+  <th style="text-align:right">优化前结果</th>
 </tr>
 </thead>
 <tbody>
 <tr>
   <td>违例端点数</td>
   <td style="text-align:right"><strong>4</strong></td>
-  <td>四个接收位置存在到达过晚的问题</td>
 </tr>
 <tr>
   <td>最差路径</td>
   <td style="text-align:right"><strong>r1 → 缓冲链 → r2</strong></td>
-  <td>本例重点展开的路径</td>
 </tr>
 <tr>
-  <td>数据要求到达时间</td>
+  <td>最差路径的数据要求到达时间</td>
   <td style="text-align:right"><strong>0.252 ns</strong></td>
-  <td>已预留接收寄存器所需的建立时间</td>
 </tr>
 <tr>
-  <td>数据实际到达时间</td>
+  <td>最差路径的数据实际到达时间</td>
   <td style="text-align:right"><strong>0.585 ns</strong></td>
-  <td>数据到达得太晚</td>
 </tr>
 <tr>
-  <td>最差裕量</td>
+  <td>最差时序裕量</td>
   <td style="text-align:right"><strong>−0.333 ns</strong></td>
-  <td>最严重的路径晚了约 0.333 ns</td>
 </tr>
 </tbody>
 </table></div>
-<p>完整连接图中的其他分支不能全部标为违例：是否连接、是否有时钟约束、是否满足时序，需要分别判断。当前资料只能确认总数和最差路径。</p>
-<h3 id="section-18">4.7 这轮优化怎样进行<a class="h-anchor" href="#section-18" aria-label="本节链接">#</a></h3>
-<p>工具先读取电路、单元特性和位置，设置时钟要求，再根据位置估算连线延迟。随后执行一轮 setup 修复，并重新检查结果。</p>
-<pre class="explain-diagram">准备电路、单元特性和位置
+<p>本轮目标覆盖全部四个违例端点。一个端点可能有多条到达路径，因此端点数量不等同于违例路径数量。修复最差路径的同时，还需要检查其他受影响分支是否满足要求。</p>
+<h3 id="section-21">4.7 优化过程：修改与时序评价交替进行<a class="h-anchor" href="#section-21" aria-label="本节链接">#</a></h3>
+<p>优化从违例端点及其关键路径出发，选择可以调整的单元或连接，生成具体修改方案，再更新受影响路径的延迟。</p>
+<pre class="explain-diagram">识别违例端点和关键路径
           ↓
-估计连线延迟，找出到达过晚的路径
+选择可调整的单元或连接
           ↓
-选择可修改的位置，尝试不同手段
+生成并实施局部修改
           ↓
-重新计算受影响路径的时序
+更新时序，比较收益与副作用
           ↓
-保留有效改动，继续处理其他问题
+保存较好结果，继续迭代或结束
 </pre>
-<p>这里需要区分：工具并不是重新设计整块芯片，而是在已有电路上寻找有用的局部改动。一次改动也可能影响多条路径，评价时不能只看目标路径是否变快。</p>
-<h3 id="section-19">4.8 多种方法先用哪个<a class="h-anchor" href="#section-19" aria-label="本节链接">#</a></h3>
-<p>这份测试记录的尝试顺序是：</p>
+<p><strong>评价不仅看目标路径是否变快，还要考虑相关端点和最差裕量的变化。</strong> 工具保存搜索过程中较好的状态，允许有限次数继续尝试；持续无改善或达到限制时停止，必要时恢复较好的结果。</p>
+<h3 id="section-22">4.8 操作策略：按序尝试，按结果保留<a class="h-anchor" href="#section-22" aria-label="本节链接">#</a></h3>
+<p>该案例的操作尝试顺序如下：</p>
 <pre class="explain-diagram">移除缓冲器 → 换大单元 → 交换等价输入引脚
     → 调整缓冲结构 → 复制逻辑门 → 拆分负载
 </pre>
-<p>这是该版本、该测试中的安排，不是所有工具的统一规则。<strong>有尝试顺序，不表示每种操作都会实施。</strong></p>
-<p>面对某个修改位置，工具会先判断当前手段能不能用，再生成具体方案。没有合法方案就跳过，找到能够实施的候选后，进入后续评价。它不是把所有方法的完整结果都求出来，再统一比较。</p>
-<p>改完之后也不一定永久保留：工具会更新时序、保存较好的状态，并允许有限次数继续探索。如果持续没有改善或达到限制，可以停止搜索，必要时恢复较好的状态。</p>
-<p>这体现了前面的三层关系：<strong>流程安排优化时机，策略安排尝试方式，具体算法决定改哪个单元、改成什么。</strong></p>
-<h3 id="section-20">4.9 为什么移除缓冲器，还要增强驱动<a class="h-anchor" href="#section-20" aria-label="本节链接">#</a></h3>
-<p>本例最终保留了两类改动。</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
-  <th>改动</th>
-  <th>为什么可能有效</th>
-  <th>为什么不能盲目使用</th>
+  <th>环节</th>
+  <th>处理方式</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>判断是否适用</td>
+  <td>检查当前单元、连接和约束是否允许该操作</td>
+</tr>
+<tr>
+  <td>生成方案</td>
+  <td>确定要替换的单元、要移除的缓冲器或其他具体改动</td>
+</tr>
+<tr>
+  <td>尝试修改</td>
+  <td>跳过不可实施的候选，实施符合条件的方案</td>
+</tr>
+<tr>
+  <td>评价效果</td>
+  <td>更新时序，决定保存结果、继续探索或恢复较好状态</td>
+</tr>
+</tbody>
+</table></div>
+<p>在一个修改位置上，找到可以实施的候选后，就进入后续评价，而不是先求出所有手段的完整结果再统一比较。<strong>操作顺序规定尝试方式，不表示每种操作都必须执行。</strong> 实际采用哪些改动，由电路条件和评价结果共同决定。</p>
+<h3 id="section-23">4.9 电路调整：减少串联级数，增强发射端驱动<a class="h-anchor" href="#section-23" aria-label="本节链接">#</a></h3>
+<p>最终电路保留了两类改动：移除四个缓冲器，并提高发射寄存器的驱动能力。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+  <th>调整</th>
+  <th>对延迟的作用</th>
+  <th>需要检查的影响</th>
 </tr>
 </thead>
 <tbody>
 <tr>
   <td><strong>移除四个缓冲器</strong></td>
-  <td>数据少经过四级单元，可能减少串行传播的时间</td>
-  <td>移除后前级需要承担新的连线和负载，可能反而变慢</td>
+  <td>减少数据经过的单元级数，降低串行传播延迟</td>
+  <td>前级承担的新负载、连线电容和扇出是否合适</td>
 </tr>
 <tr>
-  <td><strong>增强发射寄存器的驱动能力</strong></td>
-  <td>发射端更有能力驱动共享负载，改善输出与后续路径的延迟</td>
-  <td>更强单元通常需要更多面积，输入特性也可能影响其他部分</td>
+  <td><strong>将 r1 从 DFF_X1 换为 DFF_X2</strong></td>
+  <td>增强共享驱动端的驱动能力，改善相关路径延迟</td>
+  <td>单元面积、输入特性，以及其他路径的变化</td>
 </tr>
 </tbody>
 </table></div>
-<p>移除缓冲器之前，算法要检查连接是否允许、负载和扇出是否合适，以及预计的时序影响。更换尺寸时，则比较可用的等价版本，考虑输出驱动和输入负载，寻找能够带来改善的升级方案，而不是直接换成最大的单元。</p>
-<p>在这个电路中，两种改动配合起来有用：<strong>减少不合适的串联级数，同时让剩下的驱动结构承担新的负载。</strong> 普通日志没有记录每一步尝试，因此不能进一步断言具体的逐个移除顺序。</p>
-<h3 id="section-21">4.10 优化后：电路和结果发生了什么变化<a class="h-anchor" href="#section-21" aria-label="本节链接">#</a></h3>
+<p>缓冲器移除需要满足连接、负载等条件，并经过时序评价。尺寸调整则比较可用的等价单元，考虑输出驱动和输入负载，选择有收益的升级版本。</p>
+<p><strong>两种手段相互配合：减少串联缓冲级，同时让新的驱动结构能够承担负载。</strong> 这也说明，时序优化既可能增加单元，也可能移除单元，取决于当前结构。</p>
+<h3 id="section-24">4.10 优化结果：时序改善，面积同时减小<a class="h-anchor" href="#section-24" aria-label="本节链接">#</a></h3>
 <pre class="explain-diagram">优化前：
-r1〔较小驱动〕 → u1 → u2 → u3 → u4 → u5 → r2
+r1〔DFF_X1〕 → u1 → u2 → u3 → u4 → u5 → r2
 
 优化后：
-r1〔更强驱动〕 → u1 → r2
+r1〔DFF_X2〕 → u1 → r2
 </pre>
-<p>实际单元名中，<code>r1</code> 从 <code>DFF_X1</code> 换为 <code>DFF_X2</code>，剩余的 <code>u1</code> 仍是 <code>BUF_X1</code>。其他分支仍然存在，不能把这张主路径对比图当成整个电路。</p>
+<p>对比图只展示主路径。并联分支仍然存在，<code>u1</code> 保持 <code>BUF_X1</code>，发射寄存器改为驱动更强的 <code>DFF_X2</code>。</p>
 <div class="table-wrap"><table>
 <thead>
 <tr>
@@ -925,7 +950,7 @@ r1〔更强驱动〕 → u1 → r2
   <td style="text-align:right">0.260 ns</td>
 </tr>
 <tr>
-  <td>最差裕量</td>
+  <td>最差时序裕量</td>
   <td style="text-align:right"><strong>−0.333 ns</strong></td>
   <td style="text-align:right"><strong>+0.013 ns</strong></td>
 </tr>
@@ -941,10 +966,9 @@ r1〔更强驱动〕 → u1 → r2
 </tr>
 </tbody>
 </table></div>
-<p>数据到达得更早，最差裕量由负变正，日志中的违例端点数也降为零。增强一个单元并不必然增加总面积：本例同时移除了四个缓冲器，因此总面积反而减小。</p>
-<p>要求到达时间也略有变化，因为接收寄存器的建立时间会受输入信号变化速度等条件影响。表中数字来自保留三位小数的报告，直接相减可能出现舍入差异。</p>
-<p><strong>这证明的是该测试条件下的 setup 改善。</strong> 它没有覆盖实际布线后的完整结果，也不能据此认定 hold 和最终签核均已通过。</p>
-<details class="technical"><summary>实现与源码依据（可展开）</summary><p>以下命令与配置供查阅实现使用，不影响正文阅读。ORFS 阶段脚本与案例测试分别固定到所引链接中的提交；两者不是同一次完整流程的运行记录。</p><div class="table-wrap"><table><thead><tr><th>位置</th><th>实现入口或条件</th></tr></thead><tbody><tr><td>布局规划</td><td><code>repair_timing_helper -setup</code>；默认不跳过</td></tr><tr><td>全局布局</td><td><code>global_placement -timing_driven</code></td></tr><tr><td>布局后优化</td><td><code>repair_design_helper</code>；额外时序修复需开启 <code>ENABLE_PLACE_REPAIR_TIMING</code></td></tr><tr><td>CTS 后与全局布线后</td><td><code>repair_timing_helper</code>；由阶段开关控制</td></tr><tr><td>全局布线后省电调整</td><td>需同时满足 <code>OPT_POST_GRT_WNS=0</code> 与 <code>RECOVER_POWER</code> 非零，默认不执行</td></tr><tr><td>案例入口</td><td><code>estimate_parasitics -placement</code> → <code>repair_timing -setup</code></td></tr></tbody></table></div><p>全局布局内部可以临时修改网表以评价时序，再按保留条件撤销或保留；不等于默认执行了一轮独立的完整 setup／hold 修复。布局规划阶段脚本也没有在该次修复前显式执行位置寄生估算，不能把它视为已有准确布局信息的修复。</p><ul><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/64939f3717ad7c694199ba04cb98924b98022868/flow/scripts/synth_preamble.tcl">综合策略</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/64939f3717ad7c694199ba04cb98924b98022868/flow/scripts/floorplan.tcl">布局规划</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/64939f3717ad7c694199ba04cb98924b98022868/flow/scripts/global_place.tcl">全局布局</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/64939f3717ad7c694199ba04cb98924b98022868/flow/scripts/resize.tcl">布局后优化</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/64939f3717ad7c694199ba04cb98924b98022868/flow/scripts/detail_place.tcl">详细布局</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/64939f3717ad7c694199ba04cb98924b98022868/flow/scripts/cts.tcl">CTS</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/64939f3717ad7c694199ba04cb98924b98022868/flow/scripts/global_route.tcl">全局布线</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/64939f3717ad7c694199ba04cb98924b98022868/flow/scripts/detail_route.tcl">详细布线</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/64939f3717ad7c694199ba04cb98924b98022868/flow/scripts/final_outputs.tcl">最终提取与输出</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/64939f3717ad7c694199ba04cb98924b98022868/flow/scripts/variables.yaml">默认配置</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD/blob/6556255d82c707820dd400e9b8cf331b378b735e/src/rsz/test/repair_setup1.def">输入 DEF 文件</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD/blob/6556255d82c707820dd400e9b8cf331b378b735e/src/rsz/test/repair_setup1.tcl">测试脚本</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD/blob/6556255d82c707820dd400e9b8cf331b378b735e/src/rsz/test/repair_setup1.ok">官方预期输出 repair_setup1.ok</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD/blob/6556255d82c707820dd400e9b8cf331b378b735e/src/rsz/src/policy/SetupLegacyBase.cc#L666-L799">SetupLegacyBase.cc 的候选尝试与操作循环</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD/blob/6556255d82c707820dd400e9b8cf331b378b735e/src/rsz/src/policy/SetupLegacyPolicy.cc#L203-L345">SetupLegacyPolicy.cc</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD/blob/6556255d82c707820dd400e9b8cf331b378b735e/src/rsz/src/move/UnbufferGenerator.cc">UnbufferGenerator.cc</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD/blob/6556255d82c707820dd400e9b8cf331b378b735e/src/rsz/src/move/SizeUpGenerator.cc#L153-L240">SizeUpGenerator.cc</a></li></ul><p>跨工具比较及算法调用的补充依据：</p><ul><li><a href="https://community.cadence.com/cadence_blogs_8/b/di/posts/five-minute-tutorial-innovus-placement-optimization">Cadence：布局与优化交错进行</a></li><li><a href="https://www.synopsys.com/implementation-and-signoff/physical-implementation/ic-compiler.html">Synopsys：IC Compiler II 的时钟和数据协同优化</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD/blob/ba3e120bb9f2b602641b4fe3e1491d2eea638806/src/rsz/src/Resizer.tcl#L440-L483">OpenROAD：setup、hold 与省电模式分别调用</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD/blob/ba3e120bb9f2b602641b4fe3e1491d2eea638806/src/gpl/src/timingBase.cpp#L151-L185">OpenROAD：布局使用时序结果调整关键网络权重</a></li></ul><p>此处补充的 OpenROAD 实现版本与 ORFS 流程版本分别固定，未将二者认定为同一次配套构建。商业工具公开资料仅支持其公开描述的组织方式。</p></details><h2 id="section-22">参考资料<a class="h-anchor" href="#section-22" aria-label="本节链接">#</a></h2>
+<p>最差裕量由负变正，四个违例端点全部消除。虽然增强了一个寄存器，但同时移除了四个缓冲器，总面积仍然下降。</p>
+<p>要求到达时间也发生了小幅变化，因为接收寄存器的建立时间受输入信号变化速度等条件影响。以上结果对应给定模型下的 setup 检查，实际布线后的时序、hold 和最终签核仍需分别验证。</p>
+<details class="technical"><summary>实现与源码依据（可展开）</summary><p><strong>案例数据说明：</strong>数值来自官方回归测试的预期输出，未进行独立运行复现。该输出提供四个违例端点的数量和最差路径详情，没有列出其余三个端点的逐项时序，也没有完整记录逐步操作历史。原始连接文本重复列出一次 r3 的输入，图中按一个物理引脚绘制。时间按报告保留三位小数，直接相减可能出现舍入差异。</p><p>以下命令与配置供查阅实现使用，不影响正文阅读。ORFS 阶段脚本与案例测试分别固定到所引链接中的提交；两者不是同一次完整流程的运行记录。</p><div class="table-wrap"><table><thead><tr><th>位置</th><th>实现入口或条件</th></tr></thead><tbody><tr><td>布局规划</td><td><code>repair_timing_helper -setup</code>；默认不跳过</td></tr><tr><td>全局布局</td><td><code>global_placement -timing_driven</code></td></tr><tr><td>布局后优化</td><td><code>repair_design_helper</code>；额外时序修复需开启 <code>ENABLE_PLACE_REPAIR_TIMING</code></td></tr><tr><td>CTS 后与全局布线后</td><td><code>repair_timing_helper</code>；由阶段开关控制</td></tr><tr><td>全局布线后省电调整</td><td>需同时满足 <code>OPT_POST_GRT_WNS=0</code> 与 <code>RECOVER_POWER</code> 非零，默认不执行</td></tr><tr><td>案例入口</td><td><code>estimate_parasitics -placement</code> → <code>repair_timing -setup</code></td></tr></tbody></table></div><p>全局布局内部可以临时修改网表以评价时序，再按保留条件撤销或保留；不等于默认执行了一轮独立的完整 setup／hold 修复。布局规划阶段脚本也没有在该次修复前显式执行位置寄生估算，不能把它视为已有准确布局信息的修复。</p><ul><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/64939f3717ad7c694199ba04cb98924b98022868/flow/scripts/synth_preamble.tcl">综合策略</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/64939f3717ad7c694199ba04cb98924b98022868/flow/scripts/floorplan.tcl">布局规划</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/64939f3717ad7c694199ba04cb98924b98022868/flow/scripts/global_place.tcl">全局布局</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/64939f3717ad7c694199ba04cb98924b98022868/flow/scripts/resize.tcl">布局后优化</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/64939f3717ad7c694199ba04cb98924b98022868/flow/scripts/detail_place.tcl">详细布局</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/64939f3717ad7c694199ba04cb98924b98022868/flow/scripts/cts.tcl">CTS</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/64939f3717ad7c694199ba04cb98924b98022868/flow/scripts/global_route.tcl">全局布线</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/64939f3717ad7c694199ba04cb98924b98022868/flow/scripts/detail_route.tcl">详细布线</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/64939f3717ad7c694199ba04cb98924b98022868/flow/scripts/final_outputs.tcl">最终提取与输出</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/64939f3717ad7c694199ba04cb98924b98022868/flow/scripts/variables.yaml">默认配置</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD/blob/6556255d82c707820dd400e9b8cf331b378b735e/src/rsz/test/repair_setup1.def">输入 DEF 文件</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD/blob/6556255d82c707820dd400e9b8cf331b378b735e/src/rsz/test/repair_setup1.tcl">测试脚本</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD/blob/6556255d82c707820dd400e9b8cf331b378b735e/src/rsz/test/repair_setup1.ok">官方预期输出 repair_setup1.ok</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD/blob/6556255d82c707820dd400e9b8cf331b378b735e/src/rsz/src/policy/SetupLegacyBase.cc#L666-L799">SetupLegacyBase.cc 的候选尝试与操作循环</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD/blob/6556255d82c707820dd400e9b8cf331b378b735e/src/rsz/src/policy/SetupLegacyPolicy.cc#L203-L345">SetupLegacyPolicy.cc</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD/blob/6556255d82c707820dd400e9b8cf331b378b735e/src/rsz/src/move/UnbufferGenerator.cc">UnbufferGenerator.cc</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD/blob/6556255d82c707820dd400e9b8cf331b378b735e/src/rsz/src/move/SizeUpGenerator.cc#L153-L240">SizeUpGenerator.cc</a></li></ul><p>跨工具比较及算法调用的补充依据：</p><ul><li><a href="https://community.cadence.com/cadence_blogs_8/b/di/posts/five-minute-tutorial-innovus-placement-optimization">Cadence：布局与优化交错进行</a></li><li><a href="https://www.synopsys.com/implementation-and-signoff/physical-implementation/ic-compiler.html">Synopsys：IC Compiler II 的时钟和数据协同优化</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD/blob/ba3e120bb9f2b602641b4fe3e1491d2eea638806/src/rsz/src/Resizer.tcl#L440-L483">OpenROAD：setup、hold 与省电模式分别调用</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD/blob/ba3e120bb9f2b602641b4fe3e1491d2eea638806/src/gpl/src/timingBase.cpp#L151-L185">OpenROAD：布局使用时序结果调整关键网络权重</a></li></ul><p>此处补充的 OpenROAD 实现版本与 ORFS 流程版本分别固定，未将二者认定为同一次配套构建。商业工具公开资料仅支持其公开描述的组织方式。</p></details><h2 id="section-25">参考资料<a class="h-anchor" href="#section-25" aria-label="本节链接">#</a></h2>
 <p>工具文档介绍实现功能，论文介绍代表性算法。案例链接固定到同一测试版本，便于核对。</p>
 <ol>
 <li><a href="https://openroad.readthedocs.io/en/latest/main/src/rsz/README.html">OpenROAD：Gate Resizer</a>。介绍门尺寸调整、缓冲、引脚交换、复制及相关时序修复选项。</li>
