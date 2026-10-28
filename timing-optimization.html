@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>电路时序优化</title>
+<meta name="description" content="电路时序优化">
+<script>(function(){try{var t=localStorage.getItem("prdoc-theme");if(!t){t=(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light";}document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
+<link rel="stylesheet" href="assets/katex.min.css">
+<style>
+/* ================= 设计变量 ================= */
+:root{
+  --topbar-h:56px;
+  --sidebar-w:312px;
+  --content-max:940px;
+
+  --font-sans:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei","PingFang SC","Hiragino Sans GB","Noto Sans CJK SC","Source Han Sans SC",sans-serif;
+  --font-mono:"JetBrains Mono","Cascadia Mono","Cascadia Code",Consolas,"Sarasa Mono SC","Noto Sans Mono CJK SC","DejaVu Sans Mono",monospace;
+
+  --c-bg:#ffffff;
+  --c-bg-soft:#f6f8fa;
+  --c-bg-side:#fbfcfd;
+  --c-bg-code:#f6f8fa;
+  --c-border:#e5e9ef;
+  --c-border-soft:#eef1f6;
+  --c-text:#1f2328;
+  --c-text-soft:#5a626c;
+  --c-text-faint:#8b939d;
+  --c-accent:#2563eb;
+  --c-accent-soft:#e9f0fe;
+  --c-accent-line:#bcd3f7;
+  --c-quote-bg:#f7f9fc;
+  --c-hero-grad:linear-gradient(135deg,#f2f6ff 0%,#fbfcff 55%,#f7f9fc 100%);
+
+  --shadow-sm:0 1px 2px rgba(16,24,40,.05);
+  --shadow-md:0 6px 24px rgba(16,24,40,.10);
+  --radius:10px;
+}
+html[data-theme="dark"]{
+  --c-bg:#0f1216;
+  --c-bg-soft:#151a20;
+  --c-bg-side:#12161b;
+  --c-bg-code:#151a20;
+  --c-border:#262c34;
+  --c-border-soft:#1e242b;
+  --c-text:#e3e7ec;
+  --c-text-soft:#a3acb8;
+  --c-text-faint:#78828f;
+  --c-accent:#7aa8ff;
+  --c-accent-soft:#16243a;
+  --c-accent-line:#2c4470;
+  --c-quote-bg:#141a21;
+  --c-hero-grad:linear-gradient(135deg,#141b26 0%,#0f1216 60%,#12161b 100%);
+  --shadow-md:0 6px 24px rgba(0,0,0,.45);
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--c-bg);color:var(--c-text);
+  font-family:var(--font-sans);font-size:15.5px;line-height:1.78;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+}
+::selection{background:var(--c-accent-soft)}
+
+/* 滚动条 */
+*::-webkit-scrollbar{width:9px;height:9px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:var(--c-border);border-radius:6px}
+*::-webkit-scrollbar-thumb:hover{background:var(--c-text-faint)}
+
+/* ================= 顶栏 ================= */
+.progress{position:fixed;top:0;left:0;height:2px;width:0;background:var(--c-accent);z-index:60;transition:width .1s linear}
+.topbar{
+  position:sticky;top:0;z-index:40;height:var(--topbar-h);
+  display:flex;align-items:center;gap:12px;padding:0 16px;
+  background:var(--c-bg);border-bottom:1px solid var(--c-border);
+}
+.topbar .brand{
+  flex:1;min-width:0;display:flex;align-items:center;gap:9px;
+  font-weight:650;font-size:14.5px;color:var(--c-text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.topbar .brand .logo{
+  width:24px;height:24px;flex:none;border-radius:7px;
+  background:linear-gradient(135deg,var(--c-accent),#7c3aed);
+  color:#fff;font-size:12px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+}
+.icon-btn{
+  width:34px;height:34px;flex:none;display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--c-border);background:var(--c-bg);
+  color:var(--c-text-soft);border-radius:8px;cursor:pointer;font-size:15px;
+  transition:.15s;
+}
+.icon-btn:hover{background:var(--c-bg-soft);color:var(--c-text);border-color:var(--c-text-faint)}
+#menuBtn{display:none}
+
+/* ================= 布局 ================= */
+.shell{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);align-items:start}
+.mask{display:none;position:fixed;inset:0;background:rgba(15,18,22,.45);z-index:34;backdrop-filter:blur(1px)}
+.mask.show{display:block}
+
+/* ================= 侧边目录 ================= */
+.sidebar{
+  position:sticky;top:var(--topbar-h);
+  height:calc(100vh - var(--topbar-h));
+  overflow-y:auto;overscroll-behavior:contain;
+  background:var(--c-bg-side);border-right:1px solid var(--c-border);
+  padding:14px 10px 64px;
+}
+.nav-tools{display:flex;gap:6px;margin:0 6px 10px}
+.search{flex:1;position:relative}
+.search input{
+  width:100%;padding:7px 10px 7px 28px;font-size:13px;font-family:inherit;
+  color:var(--c-text);background:var(--c-bg);
+  border:1px solid var(--c-border);border-radius:8px;outline:none;transition:.15s;
+}
+.search input:focus{border-color:var(--c-accent);box-shadow:0 0 0 3px var(--c-accent-soft)}
+.search input::placeholder{color:var(--c-text-faint)}
+.search::before{
+  content:"⌕";position:absolute;left:9px;top:50%;transform:translateY(-52%);
+  color:var(--c-text-faint);font-size:15px;pointer-events:none;
+}
+.mini-btn{
+  flex:none;padding:0 9px;font-size:12px;font-family:inherit;
+  border:1px solid var(--c-border);background:var(--c-bg);color:var(--c-text-soft);
+  border-radius:8px;cursor:pointer;transition:.15s;white-space:nowrap;
+}
+.mini-btn:hover{background:var(--c-bg-soft);color:var(--c-text);border-color:var(--c-text-faint)}
+
+.nav-group{margin:1px 0}
+.nav-row{display:flex;align-items:center}
+.nav-group .nav-children{overflow:hidden}
+.nav-group.collapsed .nav-children{display:none}
+.nav-group.collapsed .chev{transform:rotate(-90deg)}
+
+.chev{
+  width:20px;height:20px;flex:none;margin-left:2px;padding:0;
+  display:flex;align-items:center;justify-content:center;
+  border:none;background:none;color:var(--c-text-faint);cursor:pointer;
+  font-size:10px;border-radius:5px;transition:transform .15s,background .15s;
+}
+.chev:hover{background:var(--c-bg-soft);color:var(--c-text)}
+
+.nav-link{
+  display:block;flex:1;min-width:0;padding:5px 9px;border-radius:7px;
+  color:var(--c-text-soft);text-decoration:none;font-size:13.5px;line-height:1.5;
+  border-left:2px solid transparent;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.nav-link:hover{background:var(--c-bg-soft);color:var(--c-text)}
+.nav-link.lv1{font-size:13px;font-weight:650;color:var(--c-text);margin:4px 0 6px;background:var(--c-bg-soft)}
+.nav-link.lv2{font-weight:650;color:var(--c-text);font-size:14px;padding:6px 9px}
+.nav-link.lv3{padding-left:22px;font-size:13px}
+.nav-link.lv4{padding-left:36px;font-size:12.5px;color:var(--c-text-faint);padding-top:4px;padding-bottom:4px}
+.nav-link.active{background:var(--c-accent-soft);color:var(--c-accent);font-weight:650;border-left-color:var(--c-accent)}
+.nav-link.hidden{display:none}
+.nav-group.hidden{display:none}
+.nav-empty{display:none;padding:10px 12px;font-size:12.5px;color:var(--c-text-faint)}
+
+/* ================= 正文 ================= */
+.doc{max-width:var(--content-max);margin:0 auto;padding:0 46px 160px;min-width:0}
+.doc-hero{
+  margin:0 -46px 30px;padding:46px 46px 34px;
+  background:var(--c-hero-grad);border-bottom:1px solid var(--c-border);
+}
+.doc-hero h1{
+  margin:0;font-size:2.05rem;line-height:1.35;font-weight:750;letter-spacing:-.01em;
+}
+.doc-hero blockquote{
+  margin:16px 0 0;padding:0;background:none;border:none;
+  color:var(--c-text-soft);font-size:14px;line-height:1.85;
+}
+.doc-hero blockquote p{margin:.2em 0}
+.doc-hero blockquote strong{color:var(--c-text)}
+.doc-hero .h-anchor{display:none}
+
+.doc h1,.doc h2,.doc h3,.doc h4{
+  scroll-margin-top:calc(var(--topbar-h) + 16px);
+  position:relative;line-height:1.4;
+}
+.doc h2{
+  margin:3.1em 0 1em;padding-bottom:.42em;font-size:1.56rem;font-weight:700;
+  border-bottom:1px solid var(--c-border);letter-spacing:-.005em;
+}
+.doc h3{
+  margin:2.15em 0 .75em;padding-left:12px;font-size:1.2rem;font-weight:650;
+  border-left:4px solid var(--c-accent-line);
+}
+.doc h4{margin:1.75em 0 .6em;font-size:1.03rem;font-weight:650}
+
+.h-anchor{
+  margin-left:.5em;color:var(--c-text-faint);text-decoration:none;font-weight:400;
+  font-size:.85em;opacity:0;transition:opacity .15s,color .15s;
+}
+.doc h2:hover .h-anchor,.doc h3:hover .h-anchor,.doc h4:hover .h-anchor{opacity:.55}
+.h-anchor:hover{color:var(--c-accent);opacity:1}
+
+.doc p{margin:.95em 0}
+.doc img{max-width:100%;height:auto;display:block;margin:1.4em auto;border-radius:var(--radius);border:1px solid var(--c-border)}
+.doc a{color:var(--c-accent);text-decoration:none;border-bottom:1px solid var(--c-accent-line)}
+.doc a:hover{border-bottom-color:currentColor}
+.doc strong{font-weight:680;color:var(--c-text)}
+.doc em{font-style:italic}
+
+.doc ul,.doc ol{margin:.9em 0;padding-left:1.6em}
+.doc li{margin:.34em 0}
+.doc li>ul,.doc li>ol{margin:.3em 0}
+.doc ul{list-style:disc}
+.doc ul ul{list-style:circle}
+
+.doc hr{
+  height:1px;margin:2.8em 0;border:none;
+  background:linear-gradient(90deg,var(--c-border),var(--c-border-soft) 65%,transparent);
+}
+
+.doc blockquote{
+  margin:1.25em 0;padding:13px 18px;
+  background:var(--c-quote-bg);border-left:3px solid var(--c-accent-line);
+  border-radius:0 9px 9px 0;color:var(--c-text-soft);font-size:14.6px;
+}
+.doc blockquote p{margin:.45em 0}
+.doc blockquote p:first-child{margin-top:0}
+.doc blockquote p:last-child{margin-bottom:0}
+.doc blockquote strong{color:var(--c-text)}
+.doc blockquote code{background:var(--c-bg)}
+
+/* 表格 */
+.table-wrap{
+  display:block;width:100%;margin:1.35em 0;
+  overflow-x:auto;overflow-y:hidden;
+  border:1px solid var(--c-border);border-radius:var(--radius);background:var(--c-bg);
+}
+.doc table{width:100%;border-collapse:collapse;font-size:13.8px}
+.doc thead th{
+  background:var(--c-bg-soft);font-weight:680;text-align:left;
+  padding:10px 13px;border-bottom:1px solid var(--c-border);white-space:nowrap;
+}
+.doc td{padding:9px 13px;border-bottom:1px solid var(--c-border-soft);vertical-align:top;line-height:1.65}
+.doc tbody tr:last-child td{border-bottom:none}
+.doc tbody tr:hover{background:var(--c-bg-soft)}
+
+/* 代码 */
+.doc pre{
+  position:relative;margin:1.25em 0;padding:15px 17px;
+  background:var(--c-bg-code);border:1px solid var(--c-border);
+  border-radius:var(--radius);overflow-x:auto;
+}
+.doc pre code{
+  display:block;font-family:var(--font-mono);font-size:12.7px;line-height:1.62;
+  white-space:pre;color:var(--c-text);background:none;border:none;padding:0;
+}
+.doc :not(pre)>code{
+  font-family:var(--font-mono);font-size:.87em;
+  background:var(--c-bg-code);border:1px solid var(--c-border-soft);
+  padding:1.5px 5px;border-radius:6px;
+}
+.copy-btn{
+  position:absolute;top:8px;right:8px;padding:3px 9px;
+  font-size:11px;font-family:inherit;
+  background:var(--c-bg);color:var(--c-text-soft);
+  border:1px solid var(--c-border);border-radius:6px;cursor:pointer;
+  opacity:0;transition:opacity .15s,color .15s;
+}
+.doc pre:hover .copy-btn,.copy-btn.done{opacity:1}
+.copy-btn:hover{color:var(--c-text);border-color:var(--c-text-faint)}
+
+/* 公式 */
+eq{display:inline}
+eqn{display:block;margin:1.05em 0}
+.doc .katex{font-size:1.06em}
+.katex-display{
+  margin:0;padding:3px 2px;overflow-x:auto;overflow-y:hidden;
+}
+.katex-display>.katex{white-space:nowrap}
+.katex-display::-webkit-scrollbar{height:6px}
+
+/* 回顶 */
+.backtop{
+  position:fixed;right:22px;bottom:26px;width:40px;height:40px;
+  display:none;align-items:center;justify-content:center;font-size:16px;
+  background:var(--c-bg);color:var(--c-text-soft);
+  border:1px solid var(--c-border);border-radius:50%;
+  box-shadow:var(--shadow-md);cursor:pointer;z-index:30;transition:.15s;
+}
+.backtop.show{display:flex}
+.backtop:hover{color:var(--c-accent);border-color:var(--c-accent)}
+
+/* ================= 响应式 ================= */
+@media (max-width:1080px){
+  :root{--sidebar-w:292px}
+  #menuBtn{display:flex}
+  .shell{grid-template-columns:minmax(0,1fr)}
+  .sidebar{
+    position:fixed;left:0;top:calc(var(--topbar-h) + 32px);z-index:35;
+    width:var(--sidebar-w);height:calc(100vh - var(--topbar-h) - 32px);
+    transform:translateX(-102%);transition:transform .22s ease;
+    box-shadow:var(--shadow-md);
+  }
+  .sidebar.open{transform:none}
+  .sitenav{padding:0 12px;font-size:12px;height:32px}
+  .doc{padding:0 22px 120px}
+  .doc-hero{margin:0 -22px 26px;padding:34px 22px 26px}
+  .doc-hero h1{font-size:1.6rem}
+  .doc h2{font-size:1.35rem}
+  .doc h3{font-size:1.12rem}
+}
+@media print{
+  .topbar,.sidebar,.backtop,.progress,.copy-btn,.mask,.sitenav{display:none!important}
+  .shell{display:block}
+  .doc{max-width:none;padding:0}
+  .doc-hero{margin:0 0 20px;padding:0 0 16px;background:none}
+  .doc h2{page-break-before:always;break-before:page}
+  .doc h2:first-of-type{page-break-before:auto;break-before:auto}
+  .doc a{color:#000;text-decoration:underline;border:none}
+  .doc pre{white-space:pre-wrap;word-break:break-word;border:1px solid #ccc}
+  .table-wrap{overflow:visible}
+  .doc table{font-size:11px}
+}
+
+/* ================= 跨页次级导航条（四个页面共用） ================= */
+.sitenav{
+  position:sticky;top:var(--topbar-h);z-index:39;
+  display:flex;align-items:center;flex-wrap:wrap;gap:2px;
+  padding:0 16px;height:36px;
+  background:var(--c-bg-side);border-bottom:1px solid var(--c-border);
+  font-size:12.6px;line-height:1;
+}
+.sitenav a,.sitenav .sitenav-cur{
+  display:inline-flex;align-items:center;height:24px;
+  padding:0 9px;border-radius:6px;
+  color:var(--c-text-soft);text-decoration:none;
+  white-space:nowrap;transition:background .15s,color .15s;
+}
+.sitenav a:hover{background:var(--c-bg-soft);color:var(--c-accent)}
+.sitenav .sitenav-cur{
+  background:var(--c-accent-soft);color:var(--c-accent);
+  font-weight:650;cursor:default;
+}
+.sitenav i{
+  color:var(--c-text-faint);font-style:normal;font-size:11px;
+  padding:0 1px;user-select:none;
+}
+/* 顶栏「返回首页」链接（子页面专用） */
+.home-btn{
+  flex:none;display:inline-flex;align-items:center;gap:5px;
+  height:34px;padding:0 11px;border-radius:8px;
+  font-size:13.4px;font-weight:600;text-decoration:none;white-space:nowrap;
+  background:var(--c-bg);color:var(--c-text-soft);
+  border:1px solid var(--c-border);transition:.15s;
+}
+.home-btn:hover{background:var(--c-accent-soft);color:var(--c-accent);border-color:var(--c-accent-line)}
+.home-btn .arw{font-size:14px;line-height:1;transform:translateY(-.5px)}
+
+/* 时序专题：离线电路图、解释图和折叠资料 */
+.diagram-scroll{overflow:auto}.circuit{margin:24px 0;padding:16px;border:1px solid var(--c-border);border-radius:10px;background:var(--c-bg-soft)}.circuit svg{display:block;width:100%;min-width:740px}.node rect{fill:var(--c-bg);stroke:var(--c-border);stroke-width:1.5}.node.focus rect{fill:#fff1e5;stroke:#d98c42}.node.unclocked rect{fill:var(--c-bg-soft);stroke:#9ca3af;stroke-dasharray:5 4}.node text{font:16px var(--font-mono);fill:var(--c-text)}.node .sub{font-size:12px;fill:var(--c-text-soft)}.wire{fill:none;stroke:#748396;stroke-width:1.8}.label{font:14px var(--font-sans);fill:var(--c-text-soft)}figcaption{font-size:12px;color:var(--c-text-soft);margin-top:12px}.doc .explain-diagram{background:var(--c-bg-soft);color:var(--c-text);border:1px solid var(--c-border);white-space:pre;overflow:auto;padding:20px}.technical{margin:30px 0;padding:16px;border:1px solid var(--c-border);border-radius:10px;background:var(--c-bg-soft)}.technical summary{cursor:pointer;color:var(--c-accent);font-weight:650}html[data-theme="dark"] .node.focus rect{fill:#422e20;stroke:#d98c42}.doc details a{overflow-wrap:anywhere}@media print{.technical{display:none}.circuit svg{min-width:0}.doc .explain-diagram{white-space:pre-wrap}}
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<header class="topbar">
+<button class="icon-btn" id="menuBtn" type="button" aria-label="打开目录">☰</button>
+<a class="home-btn" href="index.html" title="返回首页"><span class="arw">←</span>首页</a>
+<div class="brand"><span class="logo">P&amp;R</span><span>电路时序优化</span></div>
+<button class="icon-btn" id="themeBtn" type="button" aria-label="切换主题">☾</button>
+</header>
+<nav class="sitenav"><a href="index.html">首页</a><i>·</i><a href="chip-design-flow.html">全流程笔记</a><i>·</i><a href="pnr-survey.html">文献综述</a><i>·</i><a href="classic-methods.html">经典方法</a><i>·</i><a href="routing-recent.html">布线调研</a><i>·</i><span class="sitenav-cur">时序优化</span></nav>
+<div class="shell">
+<aside class="sidebar" id="sidebar">
+<div class="nav-tools">
+<div class="search"><input id="navSearch" type="search" placeholder="搜索目录…" autocomplete="off"></div>
+<button class="mini-btn" id="expandAll" type="button">展开</button>
+<button class="mini-btn" id="collapseAll" type="button">折叠</button>
+</div>
+<nav class="nav"><a class="nav-link lv1" href="#top">📄 电路时序优化</a><div class="nav-group"><div class="nav-row"><a class="nav-link lv2" href="#section-1">第一章：问题定义——时序优化在解决什么事情</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children"><a class="nav-link lv3" href="#section-2">1.1 要解决的核心问题</a><a class="nav-link lv3" href="#section-3">1.2 优化目标与边界</a><a class="nav-link lv3" href="#section-4">1.3 时序分析与时序优化的关系</a></div></div><div class="nav-group"><div class="nav-row"><a class="nav-link lv2" href="#section-5">第二章：优化手段——可以通过哪些调整改善时序</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children"><a class="nav-link lv3" href="#section-6">2.1 多种手段可以配合使用</a></div></div><div class="nav-group"><div class="nav-row"><a class="nav-link lv2" href="#section-7">第三章：方法组织概览——这些手段怎样被安排和调用</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children"><a class="nav-link lv3" href="#section-8">3.1 三层分别负责什么</a><a class="nav-link lv3" href="#section-9">3.2 用一个例子把三层串起来</a><a class="nav-link lv3" href="#section-10">3.3 从流程到算法：哪些有共同套路，哪些由工具决定</a></div></div><div class="nav-group"><div class="nav-row"><a class="nav-link lv2" href="#section-11">第四章：OpenROAD 的时序优化流程与案例</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children"><a class="nav-link lv3" href="#section-12">4.1 整个流程在哪些阶段调整时序</a><a class="nav-link lv3" href="#section-13">4.2 不同阶段，用的是同一套算法吗</a><a class="nav-link lv3" href="#section-14">4.3 为什么需要在多个阶段反复优化</a><a class="nav-link lv3" href="#section-15">4.4 案例的位置：有了布局信息后，怎样修一条慢路径</a><a class="nav-link lv3" href="#section-16">4.5 输入电路：完整连接与共享负载</a><a class="nav-link lv3" href="#section-17">4.6 优化前：不只一条路径存在问题</a><a class="nav-link lv3" href="#section-18">4.7 这轮优化怎样进行</a><a class="nav-link lv3" href="#section-19">4.8 多种方法先用哪个</a><a class="nav-link lv3" href="#section-20">4.9 为什么移除缓冲器，还要增强驱动</a><a class="nav-link lv3" href="#section-21">4.10 优化后：电路和结果发生了什么变化</a></div></div><div class="nav-group"><div class="nav-row"><a class="nav-link lv2" href="#section-22">参考资料</a><button class="chev" type="button" aria-label="展开/折叠该章">▼</button></div><div class="nav-children"></div></div><div class="nav-empty" id="navEmpty">没有匹配的条目</div></nav>
+</aside>
+<div class="mask" id="mask"></div>
+<main class="doc" id="doc"><header class="doc-hero"><h1 id="top">电路时序优化：从问题到实现<a class="h-anchor" href="#top" aria-label="本节链接">#</a></h1><blockquote><p>问题定义、常见手段与三层组织方式，以及 OpenROAD 的完整流程和 setup 修复案例。</p></blockquote></header><h2 id="section-1">第一章：问题定义——时序优化在解决什么事情<a class="h-anchor" href="#section-1" aria-label="本节链接">#</a></h2>
+<h3 id="section-2">1.1 要解决的核心问题<a class="h-anchor" href="#section-2" aria-label="本节链接">#</a></h3>
+<p>电路连接正确，并不意味着在给定的时钟频率下就一定能正确工作。数据经过逻辑门计算、沿连线传递，都需要时间；寄存器则按照时钟规定的时刻采样。</p>
+<p><strong>时序优化要做的，就是调整电路，让数据在该到的时候到，并在采样前后保持稳定。</strong> 对常见的寄存器间路径，主要关注以下问题：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+  <th>问题</th>
+  <th>通俗理解</th>
+  <th>优化要达到的效果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>建立时间（setup）不满足</td>
+  <td>下一次采样快到了，数据还没有及时算完、送到</td>
+  <td>让相关数据路径更快，或在允许的条件下调整它可用的时间</td>
+</tr>
+<tr>
+  <td>保持时间（hold）不满足</td>
+  <td>当前采样还需要旧数据保持稳定，新数据却过早传了过来</td>
+  <td>让相关新数据晚一点到，或调整相关时钟到达时间</td>
+</tr>
+<tr>
+  <td>时序已满足，但面积或功耗偏高</td>
+  <td>为了速度使用了较大的门或较快、漏电较大的单元，有些地方还有节省空间</td>
+  <td>在继续满足时序的前提下，降低面积或功耗</td>
+</tr>
+</tbody>
+</table></div>
+<p>例如，某条路径要求数据在下一拍采样前到达并留出建立时间，但实际计算和传递花费的时间超出了预算，就需要修复 setup。另一条路径过短，新数据在当前采样后到得太早，就可能需要修复 hold。</p>
+<p>所以，<strong>时序优化并不是让所有路径越快越好，而是让它们满足各自的时间要求。</strong> 加快一条路径可能改善 setup，却恶化 hold；给路径增加延迟也可能出现相反的影响。</p>
+<h3 id="section-3">1.2 优化目标与边界<a class="h-anchor" href="#section-3" aria-label="本节链接">#</a></h3>
+<p>时序优化通常有两类任务：</p>
+<ul>
+<li><strong>目标频率已经确定：</strong> 消除时序违例，让电路在这个频率下可靠工作。</li>
+<li><strong>希望进一步提高性能：</strong> 在面积、功耗等条件允许的情况下，缩短所需的时钟周期。</li>
+</ul>
+<p>无论是哪一类，都需要保证功能正确，并满足相应阶段的实现要求。例如，不能为了缩短连线就把单元放到不合法的位置，也不能只改善一条路径，却让其他路径出现无法接受的问题。</p>
+<p>可以把问题概括为：</p>
+<blockquote>
+<p><strong>在保证功能和实现要求的前提下，选择合适的电路改动，使时序满足要求，同时尽量少增加面积、功耗和优化耗时。</strong></p>
+</blockquote>
+<p>这是一类问题的总体描述。具体研究通常只解决其中一部分：有的只研究 setup，有的研究 hold，有的研究满足时序之后怎样降低功耗，不能要求一种方法包办全部问题。</p>
+<h3 id="section-4">1.3 时序分析与时序优化的关系<a class="h-anchor" href="#section-4" aria-label="本节链接">#</a></h3>
+<p>两者要分开理解：</p>
+<ul>
+<li><strong>时序分析：</strong> 计算路径延迟和时序裕量，找出哪里有问题，并检查改动是否有效。</li>
+<li><strong>时序优化：</strong> 修改逻辑、单元、位置、连线或时钟安排，尝试解决问题。</li>
+</ul>
+<p>实际过程通常是：</p>
+<pre class="explain-diagram">分析时序 → 找出问题 → 修改设计 → 重新分析 → 保留或调整方案
+</pre>
+<p>检查一次时序，并不意味着一定要修改电路。如果当前结果已经满足要求，可以继续推进设计。</p>
+<h2 id="section-5">第二章：优化手段——可以通过哪些调整改善时序<a class="h-anchor" href="#section-5" aria-label="本节链接">#</a></h2>
+<p>同一个时序问题，往往有不止一种解决办法。常见调整对象包括单元、逻辑结构、位置、连线和时钟关系。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+  <th>优化手段</th>
+  <th>怎么调整</th>
+  <th>直观例子与可能带来的效果</th>
+  <th>需要留意什么</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>门尺寸优化（gate sizing）</strong></td>
+  <td>换成驱动能力不同、逻辑功能相同的标准单元</td>
+  <td>某个门驱动后面的大负载比较吃力，可以换成更大驱动版本，让输出更快；有时间余量的门可以换小，节省面积和功耗</td>
+  <td>换大后通常会增加面积和输入电容，可能把前一级拖慢，并不是越大越好</td>
+</tr>
+<tr>
+  <td><strong>阈值电压分配（Vt assignment）</strong></td>
+  <td>选择不同阈值电压版本的同功能单元</td>
+  <td>关键路径上的门换成低 Vt 版本以加速；不紧张的路径使用高 Vt 版本以降低漏电</td>
+  <td>低 Vt 通常漏电更大，还需要库中有相应版本；这里不是直接调整芯片的供电电压</td>
+</tr>
+<tr>
+  <td><strong>缓冲器插入与调整（buffering）</strong></td>
+  <td>插入、移除缓冲器，或调整缓冲器的大小和连接结构</td>
+  <td>长线中加入合适的“中继”，可能让传递更快；在过快的短路径上插入延迟，也可以修复 hold</td>
+  <td>增加面积和功耗；插入后究竟变快还是变慢，取决于负载、位置、尺寸等条件</td>
+</tr>
+<tr>
+  <td><strong>负载拆分</strong></td>
+  <td>让部分分支通过额外的缓冲器连接，减轻原驱动门直接承担的负载</td>
+  <td>一个门既带关键分支，也带很多不着急的分支，可以把不着急的分支接到缓冲器后，让关键分支更快响应</td>
+  <td>被隔开的分支可能变慢，需要检查它们是否仍然满足时序</td>
+</tr>
+<tr>
+  <td><strong>逻辑复制（gate cloning）</strong></td>
+  <td>复制驱动逻辑，让多个副本分别带不同的分支</td>
+  <td>原来一个门带十个分支，改成两个副本分担负载，可能改善关键分支的延迟</td>
+  <td>会增加面积，还可能增加上游负载；能否复制要看逻辑结构和实现条件</td>
+</tr>
+<tr>
+  <td><strong>等价引脚交换（pin swapping）</strong></td>
+  <td>调整信号与逻辑等价输入引脚的对应关系</td>
+  <td>同一个门的等价输入引脚可能有不同延迟，把较晚到达的信号接到更快的引脚，可能改善输出到达时间</td>
+  <td>必须保持逻辑功能不变；不是所有输入引脚都能交换，也不是每次交换都有收益</td>
+</tr>
+<tr>
+  <td><strong>逻辑重构</strong></td>
+  <td>换一种逻辑结构实现相同功能</td>
+  <td>某段逻辑一级接一级，关键路径太深，可以尝试更浅或并行程度更高的实现，减少串行计算的时间</td>
+  <td>可能增加面积、扇出或布线负担，需要评价整体效果</td>
+</tr>
+<tr>
+  <td><strong>时序驱动布局（timing-driven placement）</strong></td>
+  <td>在摆放单元时，更多考虑关键路径的时间要求</td>
+  <td>把关键连接两端的单元放近一些，减少线长和互连延迟</td>
+  <td>要兼顾密度、拥塞和其他连接，不能把所有相关单元都挤在一起</td>
+</tr>
+<tr>
+  <td><strong>布线优化</strong></td>
+  <td>调整走线路径、所用金属层等实现方式</td>
+  <td>减少关键网络的绕线，或采用更合适的布线资源，降低连线延迟</td>
+  <td>受布线资源、拥塞和设计规则限制，也可能影响其他网络</td>
+</tr>
+<tr>
+  <td><strong>寄存器重定时（retiming）</strong></td>
+  <td>在满足功能等价等条件下，调整寄存器相对于组合逻辑的边界</td>
+  <td>一段流水级计算太多，另一段较少，可以尝试重新分配各级计算量，缓解最慢一级的压力</td>
+  <td>改的是逻辑连接中的寄存器边界，不只是版图坐标；也不同于直接增加流水级，且并非所有设计都允许这样改</td>
+</tr>
+<tr>
+  <td><strong>时钟偏斜优化（useful skew）</strong></td>
+  <td>有目的地调整相关寄存器接收时钟的时间</td>
+  <td>适当推迟捕获时钟，可以给某条 setup 路径更多时间</td>
+  <td>同时可能恶化 hold，或压缩其他路径的时间预算，需要一起检查</td>
+</tr>
+</tbody>
+</table></div>
+<p>表中的效果都不是无条件保证。<strong>一种改动会影响周围电路，必须通过时序分析判断它是否真正有用。</strong></p>
+<h3 id="section-6">2.1 多种手段可以配合使用<a class="h-anchor" href="#section-6" aria-label="本节链接">#</a></h3>
+<p>例如，一条路径可能同时存在驱动能力不足和连线较长的问题。单独换大一个门改善有限，工具可以继续尝试缓冲、布局调整等手段。</p>
+<p>也可以把多个调整对象放在同一个问题里考虑，这通常称为<strong>联合优化</strong>。例如：</p>
+<ul>
+<li>同时选择门尺寸和 Vt 版本。</li>
+<li>同时调整单元位置和门尺寸。</li>
+<li>同时考虑缓冲结构与相关单元尺寸。</li>
+</ul>
+<p>联合优化并不是额外增加一种电路元件，而是改变“多个调整变量怎样一起决定”的方式。它能够考虑变量之间的影响，但问题规模和求解难度通常也会增加。</p>
+<h2 id="section-7">第三章：方法组织概览——这些手段怎样被安排和调用<a class="h-anchor" href="#section-7" aria-label="本节链接">#</a></h2>
+<p>时序优化需要同时解决三个问题：什么时候运行、先用什么手段，以及具体改哪里。这三个问题分别对应流程、策略和具体算法。</p>
+<h3 id="section-8">3.1 三层分别负责什么<a class="h-anchor" href="#section-8" aria-label="本节链接">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+  <th>层次</th>
+  <th>主要回答的问题</th>
+  <th>包含哪些安排</th>
+  <th>一个例子</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>第一层：流程层</strong></td>
+  <td>什么时候优化？当前允许改什么？</td>
+  <td>确定在哪些设计阶段安排优化，以及各阶段可用的信息、允许的改动范围和目标</td>
+  <td>布局完成后，根据当前单元位置和连线估算，安排一轮时序优化</td>
+</tr>
+<tr>
+  <td><strong>第二层：策略层</strong></td>
+  <td>当前先用哪种办法？尝试失败后怎么办？</td>
+  <td>选择目标路径、选择优化手段、安排尝试顺序，以及决定继续、切换手段或停止</td>
+  <td>发现某个门负载过大，先尝试换大；收益不够，再尝试缓冲或负载拆分</td>
+</tr>
+<tr>
+  <td><strong>第三层：具体算法层</strong></td>
+  <td>选定办法后，具体方案怎么算？</td>
+  <td>求出尺寸选择、缓冲器位置、单元坐标等具体结果</td>
+  <td>决定使用哪个驱动版本，或计算缓冲器插在哪里、插几个、用多大</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>这三层是帮助理解的划分，不一定对应三个独立程序。</strong> 在真实工具和研究方法中，它们可能相互交织。</p>
+<h3 id="section-9">3.2 用一个例子把三层串起来<a class="h-anchor" href="#section-9" aria-label="本节链接">#</a></h3>
+<p>假设布局后发现一条路径不满足 setup，分析表明，某个驱动门连接的分支很多，负载较大。</p>
+<pre class="explain-diagram">第一层：流程层
+布局完成，安排一轮时序优化，明确当前允许哪些修改。
+                       ↓
+第二层：策略层
+根据负载情况，决定尝试缓冲或负载拆分。
+                       ↓
+第三层：具体算法层
+计算哪些分支接到缓冲器后，以及缓冲器放在哪里、用多大。
+                       ↓
+评价结果
+更新相关时序，检查关键路径、其他路径及面积等变化。
+                       ↓
+根据结果继续
+保留有效改动；必要时撤销，或切换到其他手段。
+</pre>
+<p>其中，“什么时候安排这轮优化”属于流程问题；“为什么先尝试缓冲”属于策略问题；“缓冲器到底怎么选、怎么放”属于具体算法问题。</p>
+<h3 id="section-10">3.3 从流程到算法：哪些有共同套路，哪些由工具决定<a class="h-anchor" href="#section-10" aria-label="本节链接">#</a></h3>
+<p>不同 EDA 工具没有一套必须照搬的完整优化顺序。<strong>共同的是“分析问题、尝试修改、重新评价”的基本过程；具体在哪个阶段做、怎样选手段、怎样求出方案，则需要分别设计。</strong> 按前面的三层，可以依次理解。</p>
+<h4>第一层：流程安排有相似的骨架，但优化节点可以不同</h4>
+<p>综合、布局、时钟树和布线提供的信息逐步完善，因此各工具通常都会在多个关键节点关注时序。不过，有的工具把布局和时序优化交错进行，有的把综合与物理实现结合得更紧，也可以安排额外的局部修复。</p>
+<p>所以，看到一种工具的阶段安排，不能直接把它当成所有工具的标准流程。还要区分：某阶段只是检查了时序，还是实际修改了设计。</p>
+<h4>第二层：操作没有统一顺序，需要根据问题安排</h4>
+<p>在已经确定的优化节点内，策略要决定先处理哪条路径、先用哪种手段，以及什么时候停止。常见方式如下，可以混合使用。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+  <th>组织方式</th>
+  <th>白话解释</th>
+  <th>需要注意</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>预设顺序</strong></td>
+  <td>先安排一套尝试次序，例如先换单元，再尝试缓冲或复制</td>
+  <td>不表示每条路径都执行全部操作；不适用的操作可以跳过</td>
+</tr>
+<tr>
+  <td><strong>根据结果选择</strong></td>
+  <td>根据当前问题和上一次改动效果，决定接下来做什么</td>
+  <td>要检查其他路径受到的影响，不能只看一条路径变快</td>
+</tr>
+<tr>
+  <td><strong>联合优化</strong></td>
+  <td>把多个变量一起考虑，例如同时选择门尺寸和 Vt</td>
+  <td>内部仍可能交替更新，不一定一次就求出全部结果</td>
+</tr>
+</tbody>
+</table></div>
+<p>同样是路径太慢，可能因为计算级数太多，也可能因为负载大或连线长。适合优先尝试的手段自然不同。即使是同一个工具，不同阶段、配置和设计状态，也可能采用不同的安排。</p>
+<p>“先修 setup，再修 hold”是 OpenROAD 等实现采用的一种策略，但不是所有工具必须照搬的数学定律；也可以有交替修复或同时考虑多种约束的方法。</p>
+<h4>第三层：要解决的问题相近，具体算法可以不同</h4>
+<p>决定使用“门尺寸优化”之后，还要计算哪些门换大、换成哪个版本。决定插缓冲器之后，还要计算位置、数量和尺寸。这些问题有共同的研究基础，但可以用不同的搜索、估计和比较方法求解。</p>
+<p><strong>操作名字相同，不代表底层实现相同。</strong> 两个工具都能插缓冲器，却可能使用不同的候选位置、收益估计、搜索范围和停止条件；它们也可以借鉴同一种经典算法，再加入各自的工程改进。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+  <th>层次</th>
+  <th>共同的部分</th>
+  <th>可能不同的部分</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>流程层</strong></td>
+  <td>随着设计信息完善，反复检查和改善时序</td>
+  <td>在哪里插入优化、哪些步骤合并或交错执行</td>
+</tr>
+<tr>
+  <td><strong>策略层</strong></td>
+  <td>找问题、选改动、评价结果、继续迭代</td>
+  <td>优先处理什么，操作顺序怎样安排，何时停止</td>
+</tr>
+<tr>
+  <td><strong>算法层</strong></td>
+  <td>求解尺寸、缓冲位置、单元位置等具体问题</td>
+  <td>怎样产生候选、比较收益、搜索方案和加速计算</td>
+</tr>
+</tbody>
+</table></div>
+<p>公开资料也反映了这种差异：OpenROAD 允许配置 setup 修复的操作顺序；Cadence Innovus 将布局与时钟树建立前的优化交错进行；Synopsys IC Compiler II 强调时钟和数据路径协同优化。这些是公开确认的组织方式，不代表已经知道商业工具内部每一步的精确实现。</p>
+<p>因此，介绍具体案例时，需要说明它是哪种工具、哪个阶段和哪些条件下的一种做法，而不把局部经验推广为通用规则。</p>
+<h2 id="section-11">第四章：OpenROAD 的时序优化流程与案例<a class="h-anchor" href="#section-11" aria-label="本节链接">#</a></h2>
+<p>OpenROAD 的完整设计流程会在多个阶段关注时序：先选择和调整电路实现，再结合位置、时钟树和连线信息继续优化。<strong>不是每个阶段都单独修一次时序，也不是等到布线完成后才开始处理。</strong></p>
+<p>这里的完整流程由 OpenROAD-flow-scripts 组织，其中逻辑综合使用 Yosys／ABC，主要物理设计使用 OpenROAD。以下默认安排来自所引用的固定版本，具体项目可以调整。</p>
+<h3 id="section-12">4.1 整个流程在哪些阶段调整时序<a class="h-anchor" href="#section-12" aria-label="本节链接">#</a></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+  <th>阶段</th>
+  <th>为什么要在这里关注时序</th>
+  <th>主要怎样调整</th>
+  <th>该流程的安排</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>逻辑综合</strong></td>
+  <td>相同功能可以有不同电路实现，计算级数和速度也不同</td>
+  <td>调整逻辑结构，选择合适的单元，并调整驱动和缓冲</td>
+  <td>默认采用偏重速度的综合策略</td>
+</tr>
+<tr>
+  <td><strong>布局规划</strong></td>
+  <td>芯片范围、端口等条件已经明确，可以提前处理部分问题</td>
+  <td>在正式完成单元摆放前，尝试调整尺寸、移除缓冲器或选择更快的单元版本</td>
+  <td>默认安排早期 setup 修复</td>
+</tr>
+<tr>
+  <td><strong>全局布局</strong></td>
+  <td>单元放在哪里，会直接影响连线距离和延迟</td>
+  <td>让关键连接尽量短，并配合驱动能力、缓冲结构的调整</td>
+  <td>默认考虑时序</td>
+</tr>
+<tr>
+  <td><strong>布局后优化</strong></td>
+  <td>有了位置，可以更具体地估计负载和连线影响</td>
+  <td>默认处理负载过大、信号变化过慢等问题；还可开启针对过慢、过快路径的修复</td>
+  <td>默认修电气问题；额外时序修复可选</td>
+</tr>
+<tr>
+  <td><strong>详细布局</strong></td>
+  <td>单元位置需要满足实际摆放规则，调整也可能改变延迟</td>
+  <td>把位置调整合法，做局部改善，再检查结果</td>
+  <td>默认没有单独的一轮 setup／hold 修复</td>
+</tr>
+<tr>
+  <td><strong>时钟树建立后</strong></td>
+  <td>时钟到达不同寄存器的时间有了具体依据，原来的时间关系可能改变</td>
+  <td>重新检查并修复数据到达过晚或过早的问题</td>
+  <td>默认安排 setup／hold 修复</td>
+</tr>
+<tr>
+  <td><strong>初步布线后</strong></td>
+  <td>连线路径比布局时的估计更具体，可能发现新的延迟问题</td>
+  <td>调整单元和缓冲，优先改善困难路径，再更新相关位置和连线</td>
+  <td>默认安排时序修复；省电调整可选</td>
+</tr>
+<tr>
+  <td><strong>详细布线</strong></td>
+  <td>需要把连线落实到具体金属层和走线路径上</td>
+  <td>完成实际走线及布线规则相关处理</td>
+  <td>默认脚本没有单独安排完整时序修复</td>
+</tr>
+<tr>
+  <td><strong>最终提取与检查</strong></td>
+  <td>需要确认完成后的连线究竟带来多大延迟</td>
+  <td>条件具备时，从实际布线提取电阻、电容，再检查时序</td>
+  <td>主要检查和报告；有问题时需另行安排局部修改</td>
+</tr>
+</tbody>
+</table></div>
+<p>“修电气问题”指改善过大的负载、过慢的信号变化等情况。它可能使路径变快，<strong>但不等于已经解决所有 setup／hold 违例</strong>。同样，生成一份时序报告，只是检查，不代表工具已经修改了电路。</p>
+<h3 id="section-13">4.2 不同阶段，用的是同一套算法吗<a class="h-anchor" href="#section-13" aria-label="本节链接">#</a></h3>
+<p><strong>不完全一样：有的阶段用自己的主要算法，有的阶段会复用同一个修复模块。即使复用了模块，任务、允许的操作和判断依据也可能不同。</strong></p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+  <th>阶段或任务</th>
+  <th>主要怎样处理</th>
+  <th>与其他阶段的关系</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>逻辑综合</strong></td>
+  <td>调整逻辑实现，完成单元选择及缓冲、尺寸调整</td>
+  <td>由综合工具执行，与后端修复不是同一套实现</td>
+</tr>
+<tr>
+  <td><strong>全局布局</strong></td>
+  <td>调整单元位置，让关键连接得到更多关注；配合部分单元和缓冲调整</td>
+  <td>有自己的布局算法，也借用后端优化功能</td>
+</tr>
+<tr>
+  <td><strong>多个阶段的 setup 修复</strong></td>
+  <td>尝试换门、调整缓冲、复制等改动，让数据及时到达</td>
+  <td>可以复用同一个修复模块，但每次允许的操作和延迟信息不同</td>
+</tr>
+<tr>
+  <td><strong>Hold 修复</strong></td>
+  <td>寻找能使新数据晚一点到、又不过多损害 setup 的方案</td>
+  <td>与 setup 修复分开求解，目标和处理方式不同</td>
+</tr>
+<tr>
+  <td><strong>利用时间余量省电</strong></td>
+  <td>在保持时序的条件下，尝试缩小单元或使用更省漏电的版本</td>
+  <td>属于另一种任务，不是普通 setup／hold 修复的简单重复</td>
+</tr>
+</tbody>
+</table></div>
+<p>例如，布局规划时只安排一组受限的 setup 操作；时钟树建立后，普通修复依次处理 setup 和 hold；初步布线后，还会依据新的连线估计，额外尝试改善最差路径。不能仅凭入口名字相同，就认定内部工作完全相同。</p>
+<p><strong>这更像多次使用同一个工具箱：工具可以复用，但每次要修的问题、允许拿出的工具和判断结果的依据不一样。</strong> 后面的案例展示其中一次 setup 修复，不代表所有阶段都会照着它的操作顺序执行。</p>
+<h3 id="section-14">4.3 为什么需要在多个阶段反复优化<a class="h-anchor" href="#section-14" aria-label="本节链接">#</a></h3>
+<p>越往后，工具掌握的实际信息越多：</p>
+<pre class="explain-diagram">综合时：知道电路用什么逻辑和单元实现
+    ↓
+布局后：知道单元位置，可以更好地估计线长
+    ↓
+时钟树建立后：知道时钟到各寄存器的传播情况
+    ↓
+初步布线后：知道更具体的连线路径
+    ↓
+详细布线后：可以根据实际走线提取更准确的电阻、电容
+</pre>
+<p>前面判断能及时到达的数据，后面可能因为连线绕远或时钟关系变化而不再满足要求。因此，后续阶段要重新检查，必要时继续修改。</p>
+<p><strong>“检查”和“修改”也不是每次都成对发生。</strong> 如果已经满足要求，可以继续推进；如果还存在问题，则需要寻找允许的调整方式。详细布线后若要修改单元或连接，还必须更新相关位置、重新布线并再次检查，不能只改网表就结束。</p>
+<h3 id="section-15">4.4 案例的位置：有了布局信息后，怎样修一条慢路径<a class="h-anchor" href="#section-15" aria-label="本节链接">#</a></h3>
+<p>OpenROAD 官方测试 <code>repair_setup1</code> 展示了一轮具体的 setup 修复。输入已经给定单元位置，工具根据位置估计连线延迟，再尝试修改电路。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+  <th>条件</th>
+  <th>这个案例的情况</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>单元与连接</td>
+  <td>已经确定，直接读取输入文件</td>
+</tr>
+<tr>
+  <td>单元位置</td>
+  <td>已经给定，不在本测试中重新完成整个布局过程</td>
+</tr>
+<tr>
+  <td>连线延迟</td>
+  <td>根据位置估算，尚未实际布线</td>
+</tr>
+<tr>
+  <td>时钟</td>
+  <td>使用理想时钟，没有建立真实时钟树</td>
+</tr>
+<tr>
+  <td>优化目标</td>
+  <td>修复 setup，即数据到达过晚的问题</td>
+</tr>
+</tbody>
+</table></div>
+<p>它接近“已有位置、尚未建立时钟树时进行修复”的条件，但本身是独立功能测试，<strong>不能直接当成完整流程中某个阶段的默认执行结果</strong>。同一套修复功能也能在其他阶段使用，只是输入信息和配置不同。</p>
+<blockquote>
+<p>案例数字来自官方测试的预期输出，不是独立复现实测。输入和实现链接固定到同一版本。输出记录了最终改动和时序结果，没有逐步列出全部尝试历史。</p>
+</blockquote>
+<h3 id="section-16">4.5 输入电路：完整连接与共享负载<a class="h-anchor" href="#section-16" aria-label="本节链接">#</a></h3>
+<p>整个测试结构包含 <strong>12 个寄存器和 5 个缓冲器</strong>。橙色部分是报告详细展开的最差路径；旁边的数据分支也会影响发射端的负载。</p>
+<figure class="circuit"><div class="diagram-scroll"><svg viewBox="0 0 1030 510" role="img" aria-labelledby="circuit-title" xmlns="http://www.w3.org/2000/svg"><title id="circuit-title">完整数据连接：r1驱动五级缓冲链及r3至r12十个并联负载，时钟连接另行标明</title><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#748396"/></marker></defs><g class="node focus"><rect x="20" y="44" width="110" height="58" rx="9"/><text x="75.0" y="68" text-anchor="middle">r1</text><text class="sub" x="75.0" y="87" text-anchor="middle">DFF_X1 · Q</text></g><g class="node focus"><rect x="220" y="44" width="105" height="58" rx="9"/><text x="272.5" y="68" text-anchor="middle">u1</text><text class="sub" x="272.5" y="87" text-anchor="middle">BUF_X1</text></g><path class="wire" d="M 130 73 H 220" marker-end="url(#arrow)"/><g class="node focus"><rect x="350" y="44" width="105" height="58" rx="9"/><text x="402.5" y="68" text-anchor="middle">u2</text><text class="sub" x="402.5" y="87" text-anchor="middle">BUF_X1</text></g><path class="wire" d="M 325 73 H 350" marker-end="url(#arrow)"/><g class="node focus"><rect x="480" y="44" width="105" height="58" rx="9"/><text x="532.5" y="68" text-anchor="middle">u3</text><text class="sub" x="532.5" y="87" text-anchor="middle">BUF_X1</text></g><path class="wire" d="M 455 73 H 480" marker-end="url(#arrow)"/><g class="node focus"><rect x="610" y="44" width="105" height="58" rx="9"/><text x="662.5" y="68" text-anchor="middle">u4</text><text class="sub" x="662.5" y="87" text-anchor="middle">BUF_X1</text></g><path class="wire" d="M 585 73 H 610" marker-end="url(#arrow)"/><g class="node focus"><rect x="740" y="44" width="105" height="58" rx="9"/><text x="792.5" y="68" text-anchor="middle">u5</text><text class="sub" x="792.5" y="87" text-anchor="middle">BUF_X1</text></g><path class="wire" d="M 715 73 H 740" marker-end="url(#arrow)"/><g class="node focus"><rect x="885" y="44" width="110" height="58" rx="9"/><text x="940.0" y="68" text-anchor="middle">r2</text><text class="sub" x="940.0" y="87" text-anchor="middle">DFF_X1 · D</text></g><path class="wire" d="M 845 73 H 885" marker-end="url(#arrow)"/><path class="wire" d="M 170 73 V 365 M 170 190 H 865 M 170 365 H 865"/><g class="node clocked"><rect x="220" y="220" width="125" height="58" rx="9"/><text x="282.5" y="244" text-anchor="middle">r3</text><text class="sub" x="282.5" y="263" text-anchor="middle">DFF_X1 · D</text></g><path class="wire" d="M 282.5 190 V 220" marker-end="url(#arrow)"/><g class="node clocked"><rect x="365" y="220" width="125" height="58" rx="9"/><text x="427.5" y="244" text-anchor="middle">r4</text><text class="sub" x="427.5" y="263" text-anchor="middle">DFF_X1 · D</text></g><path class="wire" d="M 427.5 190 V 220" marker-end="url(#arrow)"/><g class="node clocked"><rect x="510" y="220" width="125" height="58" rx="9"/><text x="572.5" y="244" text-anchor="middle">r5</text><text class="sub" x="572.5" y="263" text-anchor="middle">DFF_X1 · D</text></g><path class="wire" d="M 572.5 190 V 220" marker-end="url(#arrow)"/><g class="node clocked"><rect x="655" y="220" width="125" height="58" rx="9"/><text x="717.5" y="244" text-anchor="middle">r6</text><text class="sub" x="717.5" y="263" text-anchor="middle">DFF_X1 · D</text></g><path class="wire" d="M 717.5 190 V 220" marker-end="url(#arrow)"/><g class="node clocked"><rect x="800" y="220" width="125" height="58" rx="9"/><text x="862.5" y="244" text-anchor="middle">r7</text><text class="sub" x="862.5" y="263" text-anchor="middle">DFF_X1 · D</text></g><path class="wire" d="M 862.5 190 V 220" marker-end="url(#arrow)"/><g class="node unclocked"><rect x="220" y="395" width="125" height="58" rx="9"/><text x="282.5" y="419" text-anchor="middle">r8</text><text class="sub" x="282.5" y="438" text-anchor="middle">DFF_X1 · D</text></g><path class="wire" d="M 282.5 365 V 395" marker-end="url(#arrow)"/><g class="node unclocked"><rect x="365" y="395" width="125" height="58" rx="9"/><text x="427.5" y="419" text-anchor="middle">r9</text><text class="sub" x="427.5" y="438" text-anchor="middle">DFF_X1 · D</text></g><path class="wire" d="M 427.5 365 V 395" marker-end="url(#arrow)"/><g class="node unclocked"><rect x="510" y="395" width="125" height="58" rx="9"/><text x="572.5" y="419" text-anchor="middle">r10</text><text class="sub" x="572.5" y="438" text-anchor="middle">DFF_X1 · D</text></g><path class="wire" d="M 572.5 365 V 395" marker-end="url(#arrow)"/><g class="node unclocked"><rect x="655" y="395" width="125" height="58" rx="9"/><text x="717.5" y="419" text-anchor="middle">r11</text><text class="sub" x="717.5" y="438" text-anchor="middle">DFF_X1 · D</text></g><path class="wire" d="M 717.5 365 V 395" marker-end="url(#arrow)"/><g class="node unclocked"><rect x="800" y="395" width="125" height="58" rx="9"/><text x="862.5" y="419" text-anchor="middle">r12</text><text class="sub" x="862.5" y="438" text-anchor="middle">DFF_X1 · D</text></g><path class="wire" d="M 862.5 365 V 395" marker-end="url(#arrow)"/><text class="label" x="25" y="161">共享网络 r1q</text><text class="label" x="225" y="305">r3–r7：CK 连接 clk</text><text class="label" x="225" y="480">r8–r12：CK 未连接；D 引脚仍形成负载</text></svg></div><figcaption>数据连接示意 · 橙色为最差路径 · 灰色虚线框为 CK 未连接的负载 · 图中距离不代表物理位置</figcaption></figure>
+<p>发射寄存器 <code>r1</code> 一方面通过五级缓冲器连接 <code>r2</code>，另一方面直接连接 <code>r3</code>～<code>r12</code> 的数据输入。因此，修改 <code>r1</code> 的驱动能力，可能同时影响多个分支；改变缓冲链的负载，也可能影响这些分支共享的驱动端。</p>
+<p>时钟连接也要区分：</p>
+<ul>
+<li><code>r1</code>～<code>r7</code> 接收同一个时钟。</li>
+<li><code>r8</code>～<code>r12</code> 没有连接时钟，但数据输入仍接在网络上，形成真实负载。</li>
+</ul>
+<p><strong>这是人为构造的局部测试，不是引脚全部完整连接的产品电路。</strong> 图中没有叠加时钟和电源线，线的长短也不代表实际位置。原始连接文本重复列出了一次 <code>r3</code> 的输入，图中按同一个物理引脚只画一次。</p>
+<p>测试时钟周期为 <strong>0.3 ns</strong>。五个缓冲器初始都采用较小驱动版本，发射寄存器也使用较小驱动版本。缓冲器是否多余，不能只数级数，需要检查删掉后前级能否承担新的负载。</p>
+<h3 id="section-17">4.6 优化前：不只一条路径存在问题<a class="h-anchor" href="#section-17" aria-label="本节链接">#</a></h3>
+<p>官方日志报告，优化前共有 <strong>4 个接收端点存在 setup 违例</strong>，这一轮计划处理全部四个。它们属于同一个电路，不是四个独立电路。</p>
+<p>一个端点可以有多条到达路径，所以“四个违例端点”不表示恰好只有四条违例路径。官方输出只展开了最差的 <code>r1 → r2</code>，没有逐个提供其余三个端点的名字和数据。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+  <th>优化前的指标</th>
+  <th style="text-align:right">结果</th>
+  <th>怎么理解</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>违例端点数</td>
+  <td style="text-align:right"><strong>4</strong></td>
+  <td>四个接收位置存在到达过晚的问题</td>
+</tr>
+<tr>
+  <td>最差路径</td>
+  <td style="text-align:right"><strong>r1 → 缓冲链 → r2</strong></td>
+  <td>本例重点展开的路径</td>
+</tr>
+<tr>
+  <td>数据要求到达时间</td>
+  <td style="text-align:right"><strong>0.252 ns</strong></td>
+  <td>已预留接收寄存器所需的建立时间</td>
+</tr>
+<tr>
+  <td>数据实际到达时间</td>
+  <td style="text-align:right"><strong>0.585 ns</strong></td>
+  <td>数据到达得太晚</td>
+</tr>
+<tr>
+  <td>最差裕量</td>
+  <td style="text-align:right"><strong>−0.333 ns</strong></td>
+  <td>最严重的路径晚了约 0.333 ns</td>
+</tr>
+</tbody>
+</table></div>
+<p>完整连接图中的其他分支不能全部标为违例：是否连接、是否有时钟约束、是否满足时序，需要分别判断。当前资料只能确认总数和最差路径。</p>
+<h3 id="section-18">4.7 这轮优化怎样进行<a class="h-anchor" href="#section-18" aria-label="本节链接">#</a></h3>
+<p>工具先读取电路、单元特性和位置，设置时钟要求，再根据位置估算连线延迟。随后执行一轮 setup 修复，并重新检查结果。</p>
+<pre class="explain-diagram">准备电路、单元特性和位置
+          ↓
+估计连线延迟，找出到达过晚的路径
+          ↓
+选择可修改的位置，尝试不同手段
+          ↓
+重新计算受影响路径的时序
+          ↓
+保留有效改动，继续处理其他问题
+</pre>
+<p>这里需要区分：工具并不是重新设计整块芯片，而是在已有电路上寻找有用的局部改动。一次改动也可能影响多条路径，评价时不能只看目标路径是否变快。</p>
+<h3 id="section-19">4.8 多种方法先用哪个<a class="h-anchor" href="#section-19" aria-label="本节链接">#</a></h3>
+<p>这份测试记录的尝试顺序是：</p>
+<pre class="explain-diagram">移除缓冲器 → 换大单元 → 交换等价输入引脚
+    → 调整缓冲结构 → 复制逻辑门 → 拆分负载
+</pre>
+<p>这是该版本、该测试中的安排，不是所有工具的统一规则。<strong>有尝试顺序，不表示每种操作都会实施。</strong></p>
+<p>面对某个修改位置，工具会先判断当前手段能不能用，再生成具体方案。没有合法方案就跳过，找到能够实施的候选后，进入后续评价。它不是把所有方法的完整结果都求出来，再统一比较。</p>
+<p>改完之后也不一定永久保留：工具会更新时序、保存较好的状态，并允许有限次数继续探索。如果持续没有改善或达到限制，可以停止搜索，必要时恢复较好的状态。</p>
+<p>这体现了前面的三层关系：<strong>流程安排优化时机，策略安排尝试方式，具体算法决定改哪个单元、改成什么。</strong></p>
+<h3 id="section-20">4.9 为什么移除缓冲器，还要增强驱动<a class="h-anchor" href="#section-20" aria-label="本节链接">#</a></h3>
+<p>本例最终保留了两类改动。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+  <th>改动</th>
+  <th>为什么可能有效</th>
+  <th>为什么不能盲目使用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>移除四个缓冲器</strong></td>
+  <td>数据少经过四级单元，可能减少串行传播的时间</td>
+  <td>移除后前级需要承担新的连线和负载，可能反而变慢</td>
+</tr>
+<tr>
+  <td><strong>增强发射寄存器的驱动能力</strong></td>
+  <td>发射端更有能力驱动共享负载，改善输出与后续路径的延迟</td>
+  <td>更强单元通常需要更多面积，输入特性也可能影响其他部分</td>
+</tr>
+</tbody>
+</table></div>
+<p>移除缓冲器之前，算法要检查连接是否允许、负载和扇出是否合适，以及预计的时序影响。更换尺寸时，则比较可用的等价版本，考虑输出驱动和输入负载，寻找能够带来改善的升级方案，而不是直接换成最大的单元。</p>
+<p>在这个电路中，两种改动配合起来有用：<strong>减少不合适的串联级数，同时让剩下的驱动结构承担新的负载。</strong> 普通日志没有记录每一步尝试，因此不能进一步断言具体的逐个移除顺序。</p>
+<h3 id="section-21">4.10 优化后：电路和结果发生了什么变化<a class="h-anchor" href="#section-21" aria-label="本节链接">#</a></h3>
+<pre class="explain-diagram">优化前：
+r1〔较小驱动〕 → u1 → u2 → u3 → u4 → u5 → r2
+
+优化后：
+r1〔更强驱动〕 → u1 → r2
+</pre>
+<p>实际单元名中，<code>r1</code> 从 <code>DFF_X1</code> 换为 <code>DFF_X2</code>，剩余的 <code>u1</code> 仍是 <code>BUF_X1</code>。其他分支仍然存在，不能把这张主路径对比图当成整个电路。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+  <th>指标</th>
+  <th style="text-align:right">优化前</th>
+  <th style="text-align:right">优化后</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td>最差路径的数据到达时间</td>
+  <td style="text-align:right">0.585 ns</td>
+  <td style="text-align:right">0.247 ns</td>
+</tr>
+<tr>
+  <td>对应数据要求到达时间</td>
+  <td style="text-align:right">0.252 ns</td>
+  <td style="text-align:right">0.260 ns</td>
+</tr>
+<tr>
+  <td>最差裕量</td>
+  <td style="text-align:right"><strong>−0.333 ns</strong></td>
+  <td style="text-align:right"><strong>+0.013 ns</strong></td>
+</tr>
+<tr>
+  <td>违例端点数</td>
+  <td style="text-align:right"><strong>4</strong></td>
+  <td style="text-align:right"><strong>0</strong></td>
+</tr>
+<tr>
+  <td>设计面积相对变化</td>
+  <td style="text-align:right">基准</td>
+  <td style="text-align:right"><strong>减少 4.6%</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>数据到达得更早，最差裕量由负变正，日志中的违例端点数也降为零。增强一个单元并不必然增加总面积：本例同时移除了四个缓冲器，因此总面积反而减小。</p>
+<p>要求到达时间也略有变化，因为接收寄存器的建立时间会受输入信号变化速度等条件影响。表中数字来自保留三位小数的报告，直接相减可能出现舍入差异。</p>
+<p><strong>这证明的是该测试条件下的 setup 改善。</strong> 它没有覆盖实际布线后的完整结果，也不能据此认定 hold 和最终签核均已通过。</p>
+<details class="technical"><summary>实现与源码依据（可展开）</summary><p>以下命令与配置供查阅实现使用，不影响正文阅读。ORFS 阶段脚本与案例测试分别固定到所引链接中的提交；两者不是同一次完整流程的运行记录。</p><div class="table-wrap"><table><thead><tr><th>位置</th><th>实现入口或条件</th></tr></thead><tbody><tr><td>布局规划</td><td><code>repair_timing_helper -setup</code>；默认不跳过</td></tr><tr><td>全局布局</td><td><code>global_placement -timing_driven</code></td></tr><tr><td>布局后优化</td><td><code>repair_design_helper</code>；额外时序修复需开启 <code>ENABLE_PLACE_REPAIR_TIMING</code></td></tr><tr><td>CTS 后与全局布线后</td><td><code>repair_timing_helper</code>；由阶段开关控制</td></tr><tr><td>全局布线后省电调整</td><td>需同时满足 <code>OPT_POST_GRT_WNS=0</code> 与 <code>RECOVER_POWER</code> 非零，默认不执行</td></tr><tr><td>案例入口</td><td><code>estimate_parasitics -placement</code> → <code>repair_timing -setup</code></td></tr></tbody></table></div><p>全局布局内部可以临时修改网表以评价时序，再按保留条件撤销或保留；不等于默认执行了一轮独立的完整 setup／hold 修复。布局规划阶段脚本也没有在该次修复前显式执行位置寄生估算，不能把它视为已有准确布局信息的修复。</p><ul><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/64939f3717ad7c694199ba04cb98924b98022868/flow/scripts/synth_preamble.tcl">综合策略</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/64939f3717ad7c694199ba04cb98924b98022868/flow/scripts/floorplan.tcl">布局规划</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/64939f3717ad7c694199ba04cb98924b98022868/flow/scripts/global_place.tcl">全局布局</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/64939f3717ad7c694199ba04cb98924b98022868/flow/scripts/resize.tcl">布局后优化</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/64939f3717ad7c694199ba04cb98924b98022868/flow/scripts/detail_place.tcl">详细布局</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/64939f3717ad7c694199ba04cb98924b98022868/flow/scripts/cts.tcl">CTS</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/64939f3717ad7c694199ba04cb98924b98022868/flow/scripts/global_route.tcl">全局布线</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/64939f3717ad7c694199ba04cb98924b98022868/flow/scripts/detail_route.tcl">详细布线</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/64939f3717ad7c694199ba04cb98924b98022868/flow/scripts/final_outputs.tcl">最终提取与输出</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/64939f3717ad7c694199ba04cb98924b98022868/flow/scripts/variables.yaml">默认配置</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD/blob/6556255d82c707820dd400e9b8cf331b378b735e/src/rsz/test/repair_setup1.def">输入 DEF 文件</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD/blob/6556255d82c707820dd400e9b8cf331b378b735e/src/rsz/test/repair_setup1.tcl">测试脚本</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD/blob/6556255d82c707820dd400e9b8cf331b378b735e/src/rsz/test/repair_setup1.ok">官方预期输出 repair_setup1.ok</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD/blob/6556255d82c707820dd400e9b8cf331b378b735e/src/rsz/src/policy/SetupLegacyBase.cc#L666-L799">SetupLegacyBase.cc 的候选尝试与操作循环</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD/blob/6556255d82c707820dd400e9b8cf331b378b735e/src/rsz/src/policy/SetupLegacyPolicy.cc#L203-L345">SetupLegacyPolicy.cc</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD/blob/6556255d82c707820dd400e9b8cf331b378b735e/src/rsz/src/move/UnbufferGenerator.cc">UnbufferGenerator.cc</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD/blob/6556255d82c707820dd400e9b8cf331b378b735e/src/rsz/src/move/SizeUpGenerator.cc#L153-L240">SizeUpGenerator.cc</a></li></ul><p>跨工具比较及算法调用的补充依据：</p><ul><li><a href="https://community.cadence.com/cadence_blogs_8/b/di/posts/five-minute-tutorial-innovus-placement-optimization">Cadence：布局与优化交错进行</a></li><li><a href="https://www.synopsys.com/implementation-and-signoff/physical-implementation/ic-compiler.html">Synopsys：IC Compiler II 的时钟和数据协同优化</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD/blob/ba3e120bb9f2b602641b4fe3e1491d2eea638806/src/rsz/src/Resizer.tcl#L440-L483">OpenROAD：setup、hold 与省电模式分别调用</a></li><li><a href="https://github.com/The-OpenROAD-Project/OpenROAD/blob/ba3e120bb9f2b602641b4fe3e1491d2eea638806/src/gpl/src/timingBase.cpp#L151-L185">OpenROAD：布局使用时序结果调整关键网络权重</a></li></ul><p>此处补充的 OpenROAD 实现版本与 ORFS 流程版本分别固定，未将二者认定为同一次配套构建。商业工具公开资料仅支持其公开描述的组织方式。</p></details><h2 id="section-22">参考资料<a class="h-anchor" href="#section-22" aria-label="本节链接">#</a></h2>
+<p>工具文档介绍实现功能，论文介绍代表性算法。案例链接固定到同一测试版本，便于核对。</p>
+<ol>
+<li><a href="https://openroad.readthedocs.io/en/latest/main/src/rsz/README.html">OpenROAD：Gate Resizer</a>。介绍门尺寸调整、缓冲、引脚交换、复制及相关时序修复选项。</li>
+<li><a href="https://openroad.readthedocs.io/en/latest/main/src/gpl/README.html">OpenROAD：Global Placement</a>。介绍时序驱动布局及相关配置。</li>
+<li><a href="https://past.date-conference.com/proceedings-archive/2013/PDFFILES/12.7_1.PDF">Fast and Efficient Lagrangian Relaxation-Based Discrete Gate Sizing，DATE 2013</a>。门尺寸与相关离散选择优化的研究实例。</li>
+<li><a href="https://doi.org/10.1109/TCAD.2014.2305847">Effective Method for Simultaneous Gate Sizing and Vth Assignment Using Lagrangian Relaxation，TCAD 2014</a>。门尺寸与 Vt 联合选择的研究实例。</li>
+<li><a href="https://doi.org/10.1109/ISCAS.1990.112223">Buffer Placement in Distributed RC-tree Networks for Minimal Elmore Delay，ISCAS 1990</a>。经典缓冲器插入研究。</li>
+<li><a href="https://link.springer.com/article/10.1007/BF01759032">Retiming Synchronous Circuitry，Algorithmica 1991</a>。寄存器重定时的经典研究。</li>
+<li><a href="https://dl.acm.org/doi/10.1145/3676536.3676670">Fusion of Global Placement and Gate Sizing with Differentiable Optimization，ICCAD 2024</a>。布局与门尺寸联合优化的研究实例。</li>
+</ol>
+<blockquote>
+<p>案例源码版本：6556255d82c707820dd400e9b8cf331b378b735e。工具文档会更新，具体功能和默认策略以所使用版本为准。</p>
+</blockquote>
+</main>
+</div>
+<button class="backtop" id="backtop" type="button" aria-label="回到顶部">↑</button>
+<script>
+(function () {
+  'use strict';
+
+  var root = document.documentElement;
+
+  /* ---------- 主题 ---------- */
+  var THEME_KEY = 'prdoc-theme';
+  function readTheme() {
+    try { return localStorage.getItem(THEME_KEY); } catch (e) { return null; }
+  }
+  function applyTheme(t) {
+    root.setAttribute('data-theme', t);
+    var btn = document.getElementById('themeBtn');
+    if (btn) {
+      btn.textContent = t === 'dark' ? '☀' : '☾';
+      btn.setAttribute('aria-label', t === 'dark' ? '切换到浅色主题' : '切换到深色主题');
+    }
+  }
+  var saved = readTheme();
+  var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme(saved || (prefersDark ? 'dark' : 'light'));
+  var themeBtn = document.getElementById('themeBtn');
+  if (themeBtn) {
+    themeBtn.addEventListener('click', function () {
+      var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+      try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+    });
+  }
+
+  /* ---------- 移动端抽屉 ---------- */
+  var sidebar = document.getElementById('sidebar');
+  var mask = document.getElementById('mask');
+  var menuBtn = document.getElementById('menuBtn');
+  function closeDrawer() {
+    if (sidebar) sidebar.classList.remove('open');
+    if (mask) mask.classList.remove('show');
+  }
+  if (menuBtn) {
+    menuBtn.addEventListener('click', function () {
+      var open = sidebar.classList.toggle('open');
+      if (mask) mask.classList.toggle('show', open);
+    });
+  }
+  if (mask) mask.addEventListener('click', closeDrawer);
+
+  /* ---------- 目录：折叠 ---------- */
+  var groups = Array.prototype.slice.call(document.querySelectorAll('.nav-group'));
+  groups.forEach(function (g) {
+    var chev = g.querySelector(':scope > .nav-row > .chev');
+    if (!chev) return;
+    chev.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      g.classList.toggle('collapsed');
+    });
+  });
+
+  var expandAll = document.getElementById('expandAll');
+  var collapseAll = document.getElementById('collapseAll');
+  if (expandAll) expandAll.addEventListener('click', function () {
+    groups.forEach(function (g) { g.classList.remove('collapsed'); });
+  });
+  if (collapseAll) collapseAll.addEventListener('click', function () {
+    groups.forEach(function (g) { g.classList.add('collapsed'); });
+  });
+
+  /* ---------- 目录：搜索过滤 ---------- */
+  var navSearch = document.getElementById('navSearch');
+  var navEmpty = document.getElementById('navEmpty');
+  function filterNav() {
+    var q = (navSearch.value || '').trim().toLowerCase();
+    var anyVisible = false;
+    groups.forEach(function (g) {
+      var links = Array.prototype.slice.call(g.querySelectorAll('.nav-link'));
+      var groupHit = false;
+      links.forEach(function (a) {
+        var hit = !q || a.textContent.toLowerCase().indexOf(q) !== -1;
+        a.classList.toggle('hidden', !hit);
+        if (hit) groupHit = true;
+      });
+      g.classList.toggle('hidden', !groupHit);
+      if (groupHit) {
+        anyVisible = true;
+        if (q) g.classList.remove('collapsed');
+      }
+    });
+    var topLinks = Array.prototype.slice.call(document.querySelectorAll('.nav > .nav-link'));
+    topLinks.forEach(function (a) {
+      var hit = !q || a.textContent.toLowerCase().indexOf(q) !== -1;
+      a.classList.toggle('hidden', !hit);
+      if (hit) anyVisible = true;
+    });
+    if (navEmpty) navEmpty.style.display = anyVisible ? 'none' : 'block';
+  }
+  if (navSearch) {
+    navSearch.addEventListener('input', filterNav);
+    navSearch.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') { navSearch.value = ''; filterNav(); }
+    });
+  }
+
+  /* ---------- 滚动：进度条 / 回顶 / 高亮 ---------- */
+  var progress = document.getElementById('progress');
+  var backtop = document.getElementById('backtop');
+  var headings = Array.prototype.slice.call(document.querySelectorAll('.doc h1[id], .doc h2[id], .doc h3[id], .doc h4[id]'));
+  var linkMap = {};
+  Array.prototype.slice.call(document.querySelectorAll('.nav-link[href^="#"]')).forEach(function (a) {
+    linkMap[a.getAttribute('href').slice(1)] = a;
+  });
+
+  var activeId = null;
+  function ensureVisible(link) {
+    if (!sidebar || !link) return;
+    var lr = link.getBoundingClientRect();
+    var sr = sidebar.getBoundingClientRect();
+    if (lr.top < sr.top + 8 || lr.bottom > sr.bottom - 8) {
+      link.scrollIntoView({ block: 'center' });
+    }
+  }
+  function setActive(id) {
+    if (id === activeId) return;
+    if (activeId && linkMap[activeId]) linkMap[activeId].classList.remove('active');
+    activeId = id;
+    var link = linkMap[id];
+    if (!link) return;
+    link.classList.add('active');
+    var g = link.closest('.nav-group');
+    if (g) g.classList.remove('collapsed');
+    ensureVisible(link);
+  }
+
+  var ticking = false;
+  function onScroll() {
+    if (ticking) return;
+    ticking = true;
+    window.requestAnimationFrame(function () {
+      ticking = false;
+      var y = window.scrollY || window.pageYOffset;
+      var h = document.documentElement.scrollHeight - window.innerHeight;
+
+      if (progress) progress.style.width = (h > 0 ? Math.min(100, (y / h) * 100) : 0) + '%';
+      if (backtop) backtop.classList.toggle('show', y > 700);
+
+      var offset = 90;
+      var current = headings.length ? headings[0].id : null;
+      for (var i = 0; i < headings.length; i++) {
+        if (headings[i].getBoundingClientRect().top <= offset) current = headings[i].id;
+        else break;
+      }
+      if (current) setActive(current);
+    });
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll);
+  onScroll();
+
+  if (backtop) backtop.addEventListener('click', function () {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  /* ---------- 目录点击（移动端自动收起） ---------- */
+  Array.prototype.slice.call(document.querySelectorAll('.nav a.nav-link')).forEach(function (a) {
+    a.addEventListener('click', function () {
+      if (window.innerWidth <= 1080) closeDrawer();
+    });
+  });
+
+  /* ---------- 代码块复制 ---------- */
+  Array.prototype.slice.call(document.querySelectorAll('.doc pre:not(.explain-diagram)')).forEach(function (pre) {
+    var btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.type = 'button';
+    btn.textContent = '复制';
+    btn.addEventListener('click', function () {
+      var code = pre.querySelector('code');
+      var text = code ? code.innerText : pre.innerText;
+      var done = function () {
+        btn.textContent = '已复制';
+        btn.classList.add('done');
+        setTimeout(function () { btn.textContent = '复制'; btn.classList.remove('done'); }, 1400);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function () { fallback(text, done); });
+      } else { fallback(text, done); }
+    });
+    pre.appendChild(btn);
+  });
+  function fallback(text, done) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+})();
+
+</script>
+</body>
+</html>
